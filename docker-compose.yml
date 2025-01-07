@@ -1,0 +1,124 @@
+include:
+  - docker-compose.report-queue.yml
+services:
+  redmine:
+    build: ./redmine
+    image: modkit-redmine
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/robots.txt"]
+      interval: 5m
+      timeout: 5s
+      retries: 30
+      start_period: 15m
+      start_interval: 3s
+    depends_on:
+      - db
+      - sidekiq-valkey
+    volumes:
+      - ${DATA_DIR:?please specify DATA_DIR in .env file}/files:/usr/src/redmine/files
+      - ${DATA_DIR:?please specify DATA_DIR in .env file}/redmine-tmp:/usr/src/redmine/tmp
+      - ./files/secrets.yml:/usr/src/redmine/config/secrets.yml:rw
+    environment:
+      RAILS_ENV: production
+      REDMINE_DB_POSTGRES: db
+      REDMINE_DB_DATABASE: redmine
+      REDMINE_DB_USERNAME: ${DB_USER:-modkit}
+      REDMINE_DB_PASSWORD: ${DB_PASS:?please specify DB_PASS in .env file}
+      SECRET_KEY_BASE: ${REDMINE_SECRET_KEY_BASE:?please specify REDMINE_SECRET_KEY_BASE in .env file}
+      REDMINE_PLUGINS_MIGRATE: 1
+      REDIS_URL: redis://sidekiq-valkey:6379/0
+
+  db:
+    image: postgres:17
+    restart: always
+    stop_grace_period: 24h
+    healthcheck:
+      test: pg_isready -h localhost -U ${DB_USER:-modkit}
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1h
+      start_interval: 3s
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: ${DB_USER:-modkit}
+      POSTGRES_PASSWORD: ${DB_PASS:?please specify DB_PASS in .env file}
+    volumes:
+      - ${DATA_DIR:?please specify DATA_DIR in .env file}/db:/var/lib/postgresql/data
+
+  sidekiq-valkey:
+    image: valkey/valkey:7-alpine
+    restart: always
+    command: valkey-server /etc/valkey.conf
+    volumes:
+      - ${DATA_DIR:?please specify DATA_DIR in .env file}/sidekiq:/data
+      - ./files/valkey.conf:/etc/valkey.conf:ro
+
+  report-processor:
+    image: bsky.watch/modkit/report-processor
+    restart: always
+    build:
+      context: .
+      args:
+        CMD: report-processor
+    depends_on:
+      - report-queue
+      - redmine
+    logging:
+      options:
+        'max-size': 50m
+    command: >
+      --log-level=0
+      --auth-file=bsky.auth
+      --valkey-addr=report-queue:6379
+      --redmine-addr=http://redmine:3000
+      --config=/config/config.yaml
+      --mappings=/config/mappings.yaml
+    volumes:
+      - ./config:/config:ro
+
+  redmine-handler:
+    image: bsky.watch/modkit/redmine-handler
+    restart: always
+    build:
+      context: .
+      args:
+        CMD: redmine-handler
+    logging:
+      options:
+        'max-size': 50m
+    command: >
+      --log-level=0
+      --auth-file=bsky.auth
+      --redmine-addr=http://redmine:3000
+      --listserver-addr=http://listserver:8080/xrpc/watch.bsky.list.getMemberships
+      --config=/config/config.yaml
+      --mappings=/config/mappings.yaml
+    volumes:
+      - ./config:/config:ro
+
+  listserver:
+    image: bsky.watch/modkit/listserver
+    restart: always
+    build:
+      context: .
+      args:
+        CMD: listserver
+    logging:
+      options:
+        'max-size': 50m
+    command: >
+      --log-level=0
+      --config=/config/config.yaml
+    volumes:
+      - ./config:/config:ro
+
+
+  caddy:
+    image: caddy
+    restart: always
+    volumes:
+      - ${DATA_DIR:?please specify DATA_DIR in .env file}/caddy:/data
+      - ./files/caddy:/etc/caddy:ro
+

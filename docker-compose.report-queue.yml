@@ -1,0 +1,27 @@
+services:
+  report-queue:
+    image: valkey/valkey:7-alpine
+    command: valkey-server /etc/valkey.conf
+    volumes:
+      - ${DATA_DIR?please specify DATA_DIR in .env file}/reports:/data
+      - ./files/valkey.conf:/etc/valkey.conf:ro
+
+  report-receiver:
+    image: bsky.watch/modkit/report-receiver
+    build:
+      context: .
+      args:
+        CMD: report-receiver
+    depends_on:
+      - report-queue
+    logging:
+      options:
+        'max-size': 50m
+    command: >
+      --log-level=0
+      --config=/config/config.yaml
+      --listen-addr=:8080
+      --valkey-addr=report-queue:6379
+    volumes:
+      - ./config:/config:ro
+

@@ -1,0 +1,33 @@
+commit a2027b2ba34c982052d18791910ec44af216793c
+Author: Max Ignatenko <gelraen.ua@gmail.com>
+Date:   Tue Jan 7 12:49:09 2025 +0000
+
+    feature: enable custom field updates via the API
+
+diff --git a/app/controllers/custom_fields_controller.rb b/app/controllers/custom_fields_controller.rb
+index cb07c1f13..61c9bb0a0 100644
+--- a/app/controllers/custom_fields_controller.rb
++++ b/app/controllers/custom_fields_controller.rb
+@@ -24,7 +24,7 @@ class CustomFieldsController < ApplicationController
+   before_action :require_admin
+   before_action :build_new_custom_field, :only => [:new, :create]
+   before_action :find_custom_field, :only => [:edit, :update, :destroy]
+-  accept_api_auth :index
++  accept_api_auth :index, :update
+ 
+   def index
+     respond_to do |format|
+@@ -71,11 +71,13 @@ class CustomFieldsController < ApplicationController
+           redirect_back_or_default edit_custom_field_path(@custom_field)
+         end
+         format.js {head :ok}
++        format.api  {render_api_ok}
+       end
+     else
+       respond_to do |format|
+         format.html {render :action => 'edit'}
+         format.js {head :unprocessable_content}
++        format.api  {render_validation_errors(@custom_field)}
+       end
+     end
+   end
