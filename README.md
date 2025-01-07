@@ -38,7 +38,25 @@ Create a new account for yourself and add it to "Moderators" group. Update `conf
 
 ## System diagram
 
-TODO
+```dot
+digraph diagram {
+
+  http [label="HTTP server"];
+  report-receiver [label="Report receiver"];
+  redmine [label="Redmine"];
+  report-queue [label="Report queue (valkey)"];
+  report-processor [label="Report processor"];
+  listserver [label="List server"];
+  redmine-handler [label="Redmine webhook hanlder"];
+  postgres [label="Database"];
+  firehose [label="Firehose"];
+
+  http -> report-receiver -> report-queue -> report-processor -> redmine;
+  firehose -> listserver -> redmine-handler;
+  redmine -- postgres;
+  redmine-handler -- redmine;
+}
+```
 
 ## Monitoring
 
