@@ -4,11 +4,11 @@ Moderation stack for Bluesky, based on [Redmine](https://www.redmine.org/).
 
 ## Getting started
 
-### Environment vars
+#### 1. Environment vars
 
 Run `make .env` and edit `.env` file.
 
-### Create initial configuration
+#### 2. Create initial configuration
 
 Run `make gen-config`.
 
@@ -18,7 +18,7 @@ In `config/config.yaml` update:
   * `password` to the password of the same account.
   * `publicHostname` to the hostname your instance will be reachable from outside world.
 
-### Configure moderation account to act as a labelers
+#### 3. Configure moderation account to act as a labelers
 
 Run `go run ./cmd/account-setup`.
 
@@ -26,11 +26,11 @@ If your DID document needs to be updated, it will ask you to provide confirmaion
 
 If no changes are needed, it will just tell you that everthing is OK.
 
-### Start everything
+#### 4. Start everything
 
 Run `make up`.
 
-### Log into Redmine
+#### 5. Log into Redmine
 
 Default credentials are `admin`/`admin`.
 
