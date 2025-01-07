@@ -1,5 +1,5 @@
 .PHONY: all
-all: test
+all: test diagram.png
 
 
 .PHONY: test
@@ -38,3 +38,6 @@ up:
 
 down:
 	docker compose down
+
+diagram.png: diagram.dot
+	dot -Tpng "$<" > "$@"
