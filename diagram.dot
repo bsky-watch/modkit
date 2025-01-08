@@ -1,14 +1,14 @@
 digraph diagram {
-  http [label="HTTP server"];
+  http [label="HTTP server",shape="box"];
   report_receiver [label="Report receiver"];
-  redmine [label="Redmine"];
-  report_queue [label="Report queue (valkey)"];
+  redmine [label="Redmine",shape="parallelogram"];
+  report_queue [label="Report queue (valkey)",shape="box"];
   report_processor [label="Report processor"];
   listserver [label="List server"];
   redmine_handler [label="Redmine webhook handler"];
-  postgres [label="Database"];
-  firehose [label="Firehose"];
-  bluesky [label="Bluesky"];
+  postgres [label="Database",shape="cylinder"];
+  firehose [label="Firehose",shape="diamond"];
+  bluesky [label="Bluesky API",shape="diamond"];
 
   http -> report_receiver -> report_queue -> report_processor -> redmine;
   firehose -> listserver -> redmine_handler;
