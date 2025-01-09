@@ -166,7 +166,12 @@ func createReport(ctx context.Context, idCipher *reportqueue.IdCipher, reportWri
 
 		log = ptr(log.With().Str("subject", subject).Logger())
 
-		reportId, err := reportWriter.AddReport(ctx, did, body)
+		var response comatproto.ModerationCreateReport_Output
+		json.Unmarshal(body, &response)
+		response.CreatedAt = time.Now().Format(time.RFC3339)
+		response.ReportedBy = did
+
+		reportId, err := reportWriter.AddReport(ctx, response.ReportedBy, response.CreatedAt, body)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to write report to the queue: %s", err)
 			updateMetrics(false, http.StatusInternalServerError, start)
@@ -176,12 +181,7 @@ func createReport(ctx context.Context, idCipher *reportqueue.IdCipher, reportWri
 		log.Info().Uint64("report_id", reportId).
 			Int64("encrypted_report_id", encrypted).
 			Msgf("Report was written to the queue with ID %d", reportId)
-
-		var response comatproto.ModerationCreateReport_Output
-		json.Unmarshal(body, &response)
 		response.Id = encrypted
-		response.CreatedAt = time.Now().Format(time.RFC3339)
-		response.ReportedBy = did
 
 		updateMetrics(true, http.StatusOK, start)
 		return respond.JSON(&response)

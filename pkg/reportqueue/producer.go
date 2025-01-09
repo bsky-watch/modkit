@@ -27,7 +27,7 @@ func NewValkeyWriter(ctx context.Context, client valkey.Client, nodeId uint) (*V
 	}, nil
 }
 
-func (w *ValkeyWriter) AddReport(ctx context.Context, sender string, payload []byte) (uint64, error) {
+func (w *ValkeyWriter) AddReport(ctx context.Context, sender string, timestamp string, payload []byte) (uint64, error) {
 	id, err := w.allocateReportId(ctx)
 	if err != nil {
 		return 0, err
@@ -38,6 +38,7 @@ func (w *ValkeyWriter) AddReport(ctx context.Context, sender string, payload []b
 		FieldValue("id", fmt.Sprint(id)).
 		FieldValue("sender", sender).
 		FieldValue("report", string(payload)).
+		FieldValue("timestamp", timestamp).
 		Build()
 
 	result := w.client.Do(ctx, cmd)

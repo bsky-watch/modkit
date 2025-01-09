@@ -16,6 +16,7 @@ type QueueEntry struct {
 	AckToken   string
 	ID         string
 	ReportedBy string
+	Timestamp  string
 	Report     atproto.ModerationCreateReport_Input
 }
 
@@ -84,6 +85,8 @@ func (c *ValkeyConsumer) GetNextReport(ctx context.Context) (QueueEntry, error) 
 					entry.ID = v
 				case "sender":
 					entry.ReportedBy = v
+				case "timestamp":
+					entry.Timestamp = v
 				case "report":
 					if err := json.Unmarshal([]byte(v), &entry.Report); err != nil {
 						return entry, fmt.Errorf("unmarshaling report: %w", err)

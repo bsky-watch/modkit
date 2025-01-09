@@ -178,6 +178,7 @@ func processReport(ctx context.Context, client *xrpc.Client, ticketsClient *redm
 			RepoStrongRef:     report.Report.Subject.RepoStrongRef,
 		},
 		ReportedBy: report.ReportedBy,
+		CreatedAt:  report.Timestamp,
 	}
 
 	if n, err := strconv.ParseUint(report.ID, 10, 64); err != nil {
