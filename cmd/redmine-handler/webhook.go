@@ -18,6 +18,7 @@ import (
 var requestId atomic.Uint64
 
 type handler struct {
+	client            *xrpc.Client
 	listServerURL     string
 	ticketsClient     *redmine.Client
 	listUpdateClients map[string]*xrpc.Client
@@ -26,8 +27,9 @@ type handler struct {
 	wrapped http.HandlerFunc
 }
 
-func NewHandler(ticketsClient *redmine.Client, config *config.Config, listUpdateClients map[string]*xrpc.Client, listServerUrl string) *handler {
+func NewHandler(ticketsClient *redmine.Client, config *config.Config, client *xrpc.Client, listUpdateClients map[string]*xrpc.Client, listServerUrl string) *handler {
 	h := &handler{
+		client:            client,
 		listServerURL:     listServerUrl,
 		ticketsClient:     ticketsClient,
 		listUpdateClients: listUpdateClients,
@@ -87,6 +89,9 @@ func (h *handler) processPayload(ctx context.Context, payload *WebhookPayload) e
 	case requestedAddingToLists(payload.Issue):
 		log.Info().Msgf("Requested adding to lists")
 		return h.addToLists(ctx, payload.Issue)
+	case requestedMetadataUpdate(payload.Issue):
+		log.Info().Msgf("Metadata update request")
+		return h.updateMetadata(ctx, payload.Issue, payload.Action == "opened")
 	}
 	return nil
 }

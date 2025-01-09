@@ -148,7 +148,7 @@ func runMain(ctx context.Context) error {
 		modkitConfig.ModerationAccount.DID: client,
 	}
 
-	handler := NewHandler(ticketsClient, &modkitConfig, clients, cfg.ListServerURL)
+	handler := NewHandler(ticketsClient, &modkitConfig, client, clients, cfg.ListServerURL)
 
 	mux := http.NewServeMux()
 	mux.Handle("/webhook", handler)
