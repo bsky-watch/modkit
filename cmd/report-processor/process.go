@@ -127,11 +127,11 @@ func run(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client
 	for {
 		select {
 		case item := <-ch:
-			// start := time.Now()
+			start := time.Now()
 			err := processReport(ctx, client, ticketsClient, idCipher, item.Payload)
 			item.errCh <- err
-			// processingStats.WithLabelValues(item.Label, fmt.Sprint(err == nil)).Observe(time.Since(start).Seconds())
-			// reportsProcessed.WithLabelValues(item.Label, fmt.Sprint(err == nil)).Inc()
+			processingStats.WithLabelValues(item.Label, fmt.Sprint(err == nil)).Observe(time.Since(start).Seconds())
+			reportsProcessed.WithLabelValues(item.Label, fmt.Sprint(err == nil)).Inc()
 		case <-ctx.Done():
 			log.Info().Msgf("Shutting down...")
 			return ctx.Err()
