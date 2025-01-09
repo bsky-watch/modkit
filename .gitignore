@@ -1,4 +1,4 @@
 .env
 docker-compose.override.yml
 go.work*
-config
+/config
