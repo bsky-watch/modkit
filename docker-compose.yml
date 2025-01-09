@@ -122,3 +122,8 @@ services:
       - ${DATA_DIR:?please specify DATA_DIR in .env file}/caddy:/data
       - ./files/caddy:/etc/caddy:ro
 
+  redis-exporter:
+    image: oliver006/redis_exporter
+    restart: always
+    depends_on:
+      - report-queue
