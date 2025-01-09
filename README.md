@@ -18,6 +18,11 @@ Moderation stack for Bluesky, based on [Redmine](https://www.redmine.org/).
 * Manages moderation lists
 * Stores snapshots of the reported content and profiles
 
+### Planned future features
+
+* Emitting labels for accounts and individual records
+* Migration from Ozone
+
 ## Getting started
 
 #### 1. Environment vars & overrides
