@@ -122,6 +122,18 @@ services:
       - ${DATA_DIR:?please specify DATA_DIR in .env file}/caddy:/data
       - ./files/caddy:/etc/caddy:ro
 
+  pomerium:
+    profiles:
+      - prod
+    image: cr.pomerium.com/pomerium/pomerium:latest
+    restart: always
+    ports:
+      - 443:443
+    volumes:
+      - ./config/pomerium.yaml:/pomerium/config.yaml:ro
+      - ${DATA_DIR:?please specify DATA_DIR in .env file}/pomerium:/data:rw
+
+
   redis-exporter:
     image: oliver006/redis_exporter
     restart: always

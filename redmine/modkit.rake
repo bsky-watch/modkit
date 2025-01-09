@@ -48,7 +48,7 @@ namespace :modkit do
         "did" => "did:plc:...",
         "password" => "<password>",
       },
-      "publicHostname" => "tickets.example.com",
+      "publicHostname" => "atproto.example.com",
       "ticketIDEncryptionKey" => SecureRandom.hex(8),
       "labelSigningKey" => `openssl ecparam --name secp256k1 --genkey --noout --outform DER | tail --bytes=+8 | head --bytes=32`.unpack("H*").first,
       "lists" => {

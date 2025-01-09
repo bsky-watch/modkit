@@ -1,0 +1,61 @@
+# Configuration reference: https://www.pomerium.com/docs/reference
+
+autocert: true
+autocert_email: "your@email"
+# autocert_use_staging: true  # uncomment this if you want to use Staging CA with Let's Encrypt while testing the setup.
+
+# If running behind Cloudflare, comment out autocert settings
+# and point these to your origin server cert.
+#
+# certificate_file: /etc/pomerium/cloudflare_cert.pem
+# certificate_key_file: /etc/pomerium/cloudflare_key.pem
+
+# See setup guide https://www.pomerium.com/docs/identity-providers/google
+# Of course, feel free to use any other auth provider if you prefer.
+idp_provider: google
+idp_client_id: "{{ google_client_id }}"
+idp_client_secret: "{{ google_client_secret }}"
+
+authenticate_service_url: https://auth.<HOSTNAME>
+
+# Generate with `head -c32 /dev/urandom | base64`
+cookie_secret: "{{ pomerium_cookie_secret }}"
+# Generate with `openssl ecparam  -genkey  -name prime256v1  -noout  -out /etc/pomerium/jwt.key`
+signing_key_file: /etc/pomerium/jwt.key
+
+metrics_address: "127.0.0.1:8081"
+
+x-acls:
+  default: &default
+    allow:
+      or:
+        # List here the accounts that need to have access to the private endpoints.
+        - email: {is: '<email_address>'}
+        - email: {is: '<email_address>'}
+        - email: {is: '<email_address>'}
+
+routes:
+  # Public endpoints.
+  - from: https://atproto.<HOSTNAME>
+    path: /xrpc/com.atproto.moderation.createReport
+    to: http://report-receiver:8080
+    allow_public_unauthenticated_access: true
+
+  - from: https://atproto.<HOSTNAME>
+    path: /xrpc/com.atproto.label.queryLabels
+    to: http://report-receiver:8080
+    allow_public_unauthenticated_access: true
+
+  - from: https://atproto.<HOSTNAME>
+    path: /xrpc/com.atproto.label.subscribeLabels
+    to: http://report-receiver:8080
+    allow_public_unauthenticated_access: true
+    allow_websockets: true
+
+  # Private endpoints.
+  - from: https://tickets.<HOSTNAME>
+    to: http://redmine:3000
+    pass_identity_headers: true
+    preserve_host_header: true
+    policy:
+      - *default
