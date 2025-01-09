@@ -2,6 +2,22 @@
 
 Moderation stack for Bluesky, based on [Redmine](https://www.redmine.org/).
 
+> [!WARNING]
+> It is in a very early stage of development, so there are still some sharp edges
+> and missing functionality.
+>
+> Do not rush to replace your existing Ozone with it just yet. (Not in the least
+> because it doesn't support labeling just yet.)
+>
+> Should be okay to use for setting up a new moderation account, but be prepared
+> to do some troubleshooting when something breaks.
+
+## Features
+
+* Groups reports by subject account
+* Manages moderation lists
+* Stores snapshots of the reported content and profiles
+
 ## Getting started
 
 #### 1. Environment vars & overrides
