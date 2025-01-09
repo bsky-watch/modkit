@@ -113,7 +113,6 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 
 func (h *handler) processPayload(ctx context.Context, payload *WebhookPayload) error {
 	log := zerolog.Ctx(ctx)
-	log.Debug().Interface("payload", payload).Msgf("Payload: %+v", payload)
 
 	switch {
 	case requestedAddingToLists(payload.Issue):
