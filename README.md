@@ -18,6 +18,7 @@ Moderation stack for Bluesky, based on [Redmine](https://www.redmine.org/).
 * Manages moderation lists
 * Stores snapshots of the reported content and profiles
 * Moderators can also use in-app reports to add additional content to a ticket
+* Supports multiple report queues for redundancy
 
 ### Planned future features
 
