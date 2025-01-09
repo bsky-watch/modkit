@@ -166,6 +166,7 @@ func main() {
 	flag.StringVar(&cfg.RedmineAddr, "redmine-addr", "", "Address of the Redmine instance")
 	flag.StringVar(&cfg.Mappings, "mappings", "", "Path to the file with ID mappings")
 	flag.StringVar(&cfg.ListServerURL, "listserver-addr", "", "Address of the listserver")
+	flag.BoolVar(&cfg.DumpPayloads, "dump-payloads", false, "If set, will log the full payloads received from Redmine")
 
 	cliutil.RegisterLoggingFlags(&cfg.LoggingConfig)
 

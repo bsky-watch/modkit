@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -64,30 +65,42 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 
 	start := time.Now()
 
-	var fullPayload interface{}
-	if err := json.NewDecoder(req.Body).Decode(&fullPayload); err != nil {
-		log.Error().Err(err).Msgf("Failed to parse the payload: %s", err)
-		updateMetrics(false, http.StatusBadRequest, start)
-		return respond.BadRequest("bad JSON")
-	}
+	var body []byte
 
-	b, err := json.MarshalIndent(fullPayload, "", "  ")
-	if err != nil {
-		updateMetrics(false, http.StatusInternalServerError, start)
-		return respond.InternalServerError("failed to serialize")
-	}
+	if cfg.DumpPayloads {
+		var fullPayload interface{}
+		if err := json.NewDecoder(req.Body).Decode(&fullPayload); err != nil {
+			log.Error().Err(err).Msgf("Failed to parse the payload: %s", err)
+			updateMetrics(false, http.StatusBadRequest, start)
+			return respond.BadRequest("bad JSON")
+		}
 
-	log.Info().Msgf("Payload: %s", string(b))
+		b, err := json.MarshalIndent(fullPayload, "", "  ")
+		if err != nil {
+			updateMetrics(false, http.StatusInternalServerError, start)
+			return respond.InternalServerError("failed to serialize")
+		}
+
+		log.Info().Msgf("Payload: %s", string(b))
+	} else {
+		var err error
+		body, err = ioutil.ReadAll(req.Body)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to read request body: %s", err)
+			updateMetrics(false, http.StatusBadRequest, start)
+			return respond.BadRequest("failed to read request body")
+		}
+	}
 
 	payload := &webhookRequest{}
 
-	if err := json.Unmarshal(b, payload); err != nil {
+	if err := json.Unmarshal(body, payload); err != nil {
 		log.Error().Err(err).Msgf("Failed to parse payload: %s", err)
 		updateMetrics(false, http.StatusBadRequest, start)
 		return respond.BadRequest("bad payload")
 	}
 
-	err = h.processPayload(ctx, &payload.Payload)
+	err := h.processPayload(ctx, &payload.Payload)
 	if err != nil {
 		log.Error().Err(err).Msgf("Processing failed: %s", err)
 		updateMetrics(false, http.StatusBadGateway, start)
