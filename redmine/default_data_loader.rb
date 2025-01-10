@@ -56,8 +56,6 @@ module Redmine
                 :name => l(:default_role_moderator, default: 'Moderator'),
                 :position => 2,
                 :permissions => [
-                  :manage_versions,
-                  :manage_categories,
                   :view_issues,
                   :add_issues,
                   :edit_issues,
@@ -119,8 +117,6 @@ module Redmine
                 :name => l(:default_role_automation, default: 'Automation'),
                 :position => 4,
                 :permissions => [
-                  :manage_versions,
-                  :manage_categories,
                   :view_issues,
                   :add_issues,
                   :edit_issues,
@@ -158,8 +154,16 @@ module Redmine
             incident = Tracker.create!(:name => 'Incident', :default_status_id => new.id, :is_in_roadmap => false, :position => 2)
             appeal = Tracker.create!(:name => 'Appeal', :default_status_id => new.id, :is_in_roadmap => false, :position => 3)
 
-            ticket.core_fields = %w(assigned_to_id category_id parent_issue_id description priority_id).freeze
+            ticket.core_fields = %w(assigned_to_id parent_issue_id description priority_id).freeze
             ticket.save!
+
+            incident.core_fields = %w(assigned_to_id parent_issue_id description priority_id start_date).freeze
+            incident.save!
+
+            appeal.core_fields = %w(assigned_to_id parent_issue_id description priority_id).freeze
+            appeal.save!
+
+
 
             # Set trackers as defaults for new projects
             Setting.default_projects_tracker_ids = [
@@ -347,7 +351,7 @@ module Redmine
             )
 
             # Custom fields
-            fields = [
+            common_fields = [
               IssueCustomField.create!(
                 :name => "DID",
                 :field_format => "string",
@@ -369,6 +373,8 @@ module Redmine
                 :is_filter => true,
                 :searchable => true,
               ),
+            ]
+            ticket_fields = [
               IssueCustomField.create!(
                 :name => "Add to lists",
                 :field_format => "list",
@@ -377,8 +383,12 @@ module Redmine
                 :possible_values => ['dummy'],
               ),
             ]
-            ticket.custom_fields << fields
+            ticket.custom_fields << common_fields
+            ticket.custom_fields << ticket_fields
             ticket.save!
+
+            appeal.custom_fields << common_fields
+            appeal.save!
 
             # Automation user
             modbot = User.create!(
@@ -396,7 +406,7 @@ module Redmine
               :name => 'Tickets',
               :identifier => 'tickets',
               :is_public => false,
-              :issue_custom_fields => fields,
+              :issue_custom_fields => common_fields + ticket_fields,
             )
 
             m = Member.new(
