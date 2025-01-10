@@ -194,8 +194,8 @@ module Redmine
               end
 
               # Tickets
-              [new, in_progress, duplicate, rejected].each do |os|
-                [in_progress, closed, duplicate, rejected].each do |ns|
+              [new, in_progress, duplicate, invalid].each do |os|
+                [in_progress, closed, duplicate, invalid].each do |ns|
                   unless os == ns
                     WorkflowTransition.
                       create!(:tracker_id => ticket.id, :role_id => moderator.id,
