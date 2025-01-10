@@ -65,11 +65,12 @@ func (h *handler) addToListsAndUpdateStatus(ctx context.Context, ticket *Issue) 
 
 	updateOpts := []tickets.TicketOption{tickets.Status(tickets.StatusApplied)}
 
-	addErr := h.addToLists(ctx, ticket)
+	text, addErr := h.addToLists(ctx, ticket)
 	redmineTicket, err := h.ticketsClient.Issue(ticket.Id)
 	if err != nil {
 		return fmt.Errorf("failed to fetch the current state of the ticket: %w", err)
 	}
+	updateOpts = append(updateOpts, tickets.WithNote(text))
 	if addErr != nil {
 		log.Error().Err(addErr).Msgf("Failed to update lists: %s", err)
 		updateOpts = []tickets.TicketOption{
@@ -85,30 +86,30 @@ func (h *handler) addToListsAndUpdateStatus(ctx context.Context, ticket *Issue) 
 	return nil
 }
 
-func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
+func (h *handler) addToLists(ctx context.Context, ticket *Issue) (string, error) {
 	log := zerolog.Ctx(ctx)
 	mappings := tickets.Mappings()
 
 	didField, found := ticket.CustomField(mappings.Fields.DID)
 	if !found {
-		return fmt.Errorf("DID not set")
+		return "", fmt.Errorf("DID not set")
 	}
 	var did string
 	if err := json.Unmarshal(didField.Value, &did); err != nil {
-		return fmt.Errorf("failed to parse DID: %w", err)
+		return "", fmt.Errorf("failed to parse DID: %w", err)
 	}
 	if did == "" {
-		return fmt.Errorf("DID not set")
+		return "", fmt.Errorf("DID not set")
 	}
 
 	addToListsField, found := ticket.CustomField(mappings.Fields.AddToLists)
 	if !found {
-		return fmt.Errorf("AddToLists field is not set")
+		return "", fmt.Errorf("AddToLists field is not set")
 	}
 
 	var values []string
 	if err := json.Unmarshal(addToListsField.Value, &values); err != nil {
-		return fmt.Errorf("unmarshaling AddToLists from JSON: %w", err)
+		return "", fmt.Errorf("unmarshaling AddToLists from JSON: %w", err)
 	}
 
 	shouldBeInList := map[string]bool{}
@@ -118,18 +119,18 @@ func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 		}
 		id := extractListId(value)
 		if id == "" {
-			return fmt.Errorf("no list ID in the value %q", value)
+			return "", fmt.Errorf("no list ID in the value %q", value)
 		}
 		_, found := h.config.Lists[id]
 		if !found {
-			return fmt.Errorf("missing mapping for %q", id)
+			return "", fmt.Errorf("missing mapping for %q", id)
 		}
 		shouldBeInList[id] = true
 	}
 
 	memberships, err := h.getListMemberships(ctx, did)
 	if err != nil {
-		return fmt.Errorf("failed to get list memberships: %w", err)
+		return "", fmt.Errorf("failed to get list memberships: %w", err)
 	}
 
 	result := listUpdateResult{}
@@ -154,12 +155,12 @@ func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 				time.Sleep(3 * time.Second)
 				m, err := h.getListMemberships(ctx, did)
 				if err != nil {
-					return fmt.Errorf("failed to get list memberships: %w", err)
+					return "", fmt.Errorf("failed to get list memberships: %w", err)
 				}
 				memberships = m.Results[owner]
 				continue
 			}
-			return addErr
+			return "", addErr
 		}
 
 		if addErr != nil {
@@ -167,7 +168,7 @@ func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 			memberships.Cid = ""
 			r, err = h.tryAddToLists(ctx, client, owner, did, &memberships, shouldBeInList)
 			if err != nil {
-				return err
+				return "", err
 			}
 		}
 
@@ -191,17 +192,7 @@ func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 			lines = append(lines, "* "+s)
 		}
 	}
-
-	redmineTicket, err := h.ticketsClient.Issue(ticket.Id)
-	if err != nil {
-		return fmt.Errorf("failed to fetch the current state of the ticket: %w", err)
-	}
-
-	_, err = tickets.AddNote(ctx, h.ticketsClient, redmineTicket, strings.Join(lines, "\n"))
-	if err != nil {
-		return err
-	}
-	return nil
+	return strings.Join(lines, "\n"), nil
 }
 
 type listUpdateResult struct {
