@@ -60,6 +60,31 @@ func (h *handler) getListMemberships(ctx context.Context, did string) (*listserv
 	return r, nil
 }
 
+func (h *handler) addToListsAndUpdateStatus(ctx context.Context, ticket *Issue) error {
+	log := zerolog.Ctx(ctx)
+
+	updateOpts := []tickets.TicketOption{tickets.Status(tickets.StatusApplied)}
+
+	addErr := h.addToLists(ctx, ticket)
+	redmineTicket, err := h.ticketsClient.Issue(ticket.Id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch the current state of the ticket: %w", err)
+	}
+	if addErr != nil {
+		log.Error().Err(addErr).Msgf("Failed to update lists: %s", err)
+		updateOpts = []tickets.TicketOption{
+			tickets.Status(tickets.StatusInProgress),
+			tickets.WithNote(fmt.Sprintf("Failed to apply updates: %s", addErr)),
+		}
+	}
+
+	_, err = tickets.Update(ctx, h.ticketsClient, redmineTicket, updateOpts...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 	log := zerolog.Ctx(ctx)
 	mappings := tickets.Mappings()
@@ -170,11 +195,6 @@ func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 	redmineTicket, err := h.ticketsClient.Issue(ticket.Id)
 	if err != nil {
 		return fmt.Errorf("failed to fetch the current state of the ticket: %w", err)
-	}
-
-	_, err = tickets.Update(ctx, h.ticketsClient, redmineTicket, tickets.Status(tickets.StatusApplied))
-	if err != nil {
-		return err
 	}
 
 	_, err = tickets.AddNote(ctx, h.ticketsClient, redmineTicket, strings.Join(lines, "\n"))

@@ -150,3 +150,10 @@ func Author(user string) TicketOption {
 		return nil
 	}
 }
+
+func WithNote(text string) TicketOption {
+	return func(ticket *ticketData) error {
+		ticket.Notes = text
+		return nil
+	}
+}
