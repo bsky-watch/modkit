@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 )
 
 type webhookRequest struct {

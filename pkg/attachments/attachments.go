@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 )
 
 type AttachmentCreator struct {

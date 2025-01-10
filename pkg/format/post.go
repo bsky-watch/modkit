@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"bsky.watch/redmine"
 	"bsky.watch/utils/xrpcauth"
 	"github.com/bluesky-social/indigo/api/bsky"
 	"github.com/bluesky-social/indigo/xrpc"
-	"github.com/mattn/go-redmine"
 )
 
 type Uploader interface {

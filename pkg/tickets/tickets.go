@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

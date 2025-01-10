@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"bsky.watch/redmine"
 	"github.com/Jille/convreq"
 	"github.com/Jille/convreq/respond"
-	"github.com/mattn/go-redmine"
 	"github.com/rs/zerolog"
 
 	"bsky.watch/modkit/pkg/config"

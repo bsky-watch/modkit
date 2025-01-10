@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 	"github.com/rs/zerolog"
 
 	comatproto "github.com/bluesky-social/indigo/api/atproto"

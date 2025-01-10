@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"os"
 
+	"bsky.watch/redmine"
 	"github.com/bluesky-social/indigo/xrpc"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/mattn/go-redmine"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"golang.org/x/oauth2"

@@ -3,7 +3,7 @@ package tickets
 import (
 	"fmt"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 )
 
 type ticketData struct {

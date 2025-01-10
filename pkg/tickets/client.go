@@ -1,7 +1,7 @@
 package tickets
 
 import (
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 )
 
 func NewClient(addr string, apiKey string) *redmine.Client {

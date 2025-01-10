@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 	"github.com/rs/zerolog"
 	"github.com/valkey-io/valkey-go"
 

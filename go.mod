@@ -7,6 +7,7 @@ toolchain go1.23.4
 require (
 	bsky.watch/jwt-go-secp256k1 v0.3.0
 	bsky.watch/labeler v0.3.0
+	bsky.watch/redmine v0.0.0-20250110160348-fd9858f59f42
 	bsky.watch/utils v0.0.0-20250107160407-12419f639000
 	github.com/Jille/convreq v1.7.1
 	github.com/bluesky-social/indigo v0.0.0-20250107142340-5e1b39404332
@@ -16,7 +17,6 @@ require (
 	github.com/imax9000/errors v1.0.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/mattn/go-redmine v0.0.4-0.20240628111927-04c0d4a4ec51
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multicodec v0.9.0
 	github.com/prometheus/client_golang v1.20.5
@@ -140,5 +140,3 @@ require (
 	gorm.io/gorm v1.25.12 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
-
-replace github.com/mattn/go-redmine => bsky.watch/redmine v0.0.0-20250110150805-aef6f2e52929

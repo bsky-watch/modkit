@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/mattn/go-redmine"
+	"bsky.watch/redmine"
 	"gopkg.in/yaml.v3"
 )
 
