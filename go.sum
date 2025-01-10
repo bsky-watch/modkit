@@ -2,8 +2,8 @@ bsky.watch/jwt-go-secp256k1 v0.3.0 h1:KTATnI5pJPsyJGlEqfY+jYW7xcsId/CgXpSnhKbF+5
 bsky.watch/jwt-go-secp256k1 v0.3.0/go.mod h1:1Vs/pH96XFl7e3l7ioEtpTomFiYV5DRBf58JljLABas=
 bsky.watch/labeler v0.3.0 h1:sDNaWONIbyD3yKTPTXmBaDSGmVu3j3740JzkN14ga+4=
 bsky.watch/labeler v0.3.0/go.mod h1:ZMY1Dir3rAqsTcUQo1r0ZgM+GANnLS0k1n86OAJywRo=
-bsky.watch/redmine v0.0.0-20250107145003-110186f55f09 h1:cKr68KUr6OGOHw4qM5R8rpBWi6XfDy8NHKZNnUdZeSw=
-bsky.watch/redmine v0.0.0-20250107145003-110186f55f09/go.mod h1:DZDDsePx3aq/vRa2+8ehy0deMJf52aAd7YMLK3OyVeY=
+bsky.watch/redmine v0.0.0-20250110150805-aef6f2e52929 h1:0h6uU96A8JFY4VpDVQs9eQEXK6X233xCCw44uChCk/Y=
+bsky.watch/redmine v0.0.0-20250110150805-aef6f2e52929/go.mod h1:DZDDsePx3aq/vRa2+8ehy0deMJf52aAd7YMLK3OyVeY=
 bsky.watch/utils v0.0.0-20250107160407-12419f639000 h1:38sVWZeXK7zH0npXEqdBAPHhYOjVoRpnRKCv8VAQs3Y=
 bsky.watch/utils v0.0.0-20250107160407-12419f639000/go.mod h1:kd8Z1t7n1KwBZIo3KU0TcZ5OzKczQI+9Fry9xOZRDig=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=

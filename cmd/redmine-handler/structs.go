@@ -12,8 +12,10 @@ type webhookRequest struct {
 }
 
 type WebhookPayload struct {
-	Action string `json:"action"`
-	Issue  *Issue `json:"issue,omitempty"`
+	Action  string   `json:"action"`
+	Issue   *Issue   `json:"issue,omitempty"`
+	Journal *Journal `json:"journal,omitempty"`
+	URL     string   `json:"url"`
 }
 
 type User struct {
@@ -41,8 +43,6 @@ type Issue struct {
 	ParentId          *int               `json:"parent_id,omitempty"`
 	Project           *redmine.Project   `json:"project,omitempty"`
 	Tracker           *redmine.IdName    `json:"tracker,omitempty"`
-	Journal           *Journal           `json:"journal,omitempty"`
-	URL               string             `json:"url"`
 }
 
 type CustomFieldValue struct {

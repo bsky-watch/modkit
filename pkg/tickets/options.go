@@ -140,6 +140,7 @@ func Status(status TicketStatus) TicketOption {
 			return fmt.Errorf("missing mapping for ticket status %+v", status)
 		}
 		ticket.StatusId = value
+		ticket.Status = nil
 		return nil
 	}
 }

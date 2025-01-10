@@ -148,7 +148,10 @@ func runMain(ctx context.Context) error {
 		modkitConfig.ModerationAccount.DID: client,
 	}
 
-	handler := NewHandler(ticketsClient, &modkitConfig, client, clients, cfg.ListServerURL)
+	handler, err := NewHandler(ticketsClient, &modkitConfig, client, clients, cfg.ListServerURL)
+	if err != nil {
+		return fmt.Errorf("constructing handler: %w", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/webhook", handler)

@@ -141,4 +141,4 @@ require (
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
 
-replace github.com/mattn/go-redmine => bsky.watch/redmine v0.0.0-20250107145003-110186f55f09
+replace github.com/mattn/go-redmine => bsky.watch/redmine v0.0.0-20250110150805-aef6f2e52929

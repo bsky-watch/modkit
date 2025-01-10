@@ -27,22 +27,29 @@ type handler struct {
 	ticketsClient     *redmine.Client
 	listUpdateClients map[string]*xrpc.Client
 	config            *config.Config
+	myId              int
 
 	wrapped http.HandlerFunc
 }
 
-func NewHandler(ticketsClient *redmine.Client, config *config.Config, client *xrpc.Client, listUpdateClients map[string]*xrpc.Client, listServerUrl string) *handler {
+func NewHandler(ticketsClient *redmine.Client, config *config.Config, client *xrpc.Client, listUpdateClients map[string]*xrpc.Client, listServerUrl string) (*handler, error) {
+	me, err := ticketsClient.MyAccount()
+	if err != nil {
+		return nil, err
+	}
+
 	h := &handler{
 		client:            client,
 		listServerURL:     listServerUrl,
 		ticketsClient:     ticketsClient,
 		listUpdateClients: listUpdateClients,
 		config:            config,
+		myId:              me.Id,
 	}
 
 	h.wrapped = convreq.Wrap(h.HandleWebhook)
 
-	return h
+	return h, nil
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -95,6 +102,14 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 		log.Error().Err(err).Msgf("Failed to parse payload: %s", err)
 		updateMetrics(false, http.StatusBadRequest, start)
 		return respond.BadRequest("bad payload")
+	}
+
+	if payload.Payload.Journal != nil &&
+		payload.Payload.Journal.Author != nil &&
+		payload.Payload.Journal.Author.Id == h.myId {
+		log.Debug().Msgf("Invocation seems to be triggered by our own update, so not doing anything to avoid falling into recursion.")
+		updateMetrics(true, http.StatusNoContent, start)
+		return respond.NoContent("OK")
 	}
 
 	err = h.processPayload(ctx, &payload.Payload)
