@@ -9,16 +9,16 @@ import (
 	"strings"
 	"time"
 
-	comatproto "github.com/bluesky-social/indigo/api/atproto"
-	"github.com/bluesky-social/indigo/api/bsky"
-	lexutil "github.com/bluesky-social/indigo/lex/util"
-	"github.com/bluesky-social/indigo/xrpc"
 	"github.com/imax9000/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/maps"
 
 	"bsky.watch/utils/aturl"
 	"bsky.watch/utils/listserver"
+	comatproto "github.com/bluesky-social/indigo/api/atproto"
+	"github.com/bluesky-social/indigo/api/bsky"
+	lexutil "github.com/bluesky-social/indigo/lex/util"
+	"github.com/bluesky-social/indigo/xrpc"
 
 	"bsky.watch/modkit/pkg/tickets"
 )
