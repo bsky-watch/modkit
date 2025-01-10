@@ -72,6 +72,9 @@ func (h *handler) addToLists(ctx context.Context, ticket *Issue) error {
 	if err := json.Unmarshal(didField.Value, &did); err != nil {
 		return fmt.Errorf("failed to parse DID: %w", err)
 	}
+	if did == "" {
+		return fmt.Errorf("DID not set")
+	}
 
 	addToListsField, found := ticket.CustomField(mappings.Fields.AddToLists)
 	if !found {
