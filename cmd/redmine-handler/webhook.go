@@ -65,11 +65,16 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 
 	start := time.Now()
 
-	var body []byte
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to read request body: %s", err)
+		updateMetrics(false, http.StatusBadRequest, start)
+		return respond.BadRequest("failed to read request body")
+	}
 
 	if cfg.DumpPayloads {
 		var fullPayload interface{}
-		if err := json.NewDecoder(req.Body).Decode(&fullPayload); err != nil {
+		if err := json.Unmarshal(body, &fullPayload); err != nil {
 			log.Error().Err(err).Msgf("Failed to parse the payload: %s", err)
 			updateMetrics(false, http.StatusBadRequest, start)
 			return respond.BadRequest("bad JSON")
@@ -82,14 +87,6 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 		}
 
 		log.Info().Msgf("Payload: %s", string(b))
-	} else {
-		var err error
-		body, err = ioutil.ReadAll(req.Body)
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to read request body: %s", err)
-			updateMetrics(false, http.StatusBadRequest, start)
-			return respond.BadRequest("failed to read request body")
-		}
 	}
 
 	payload := &webhookRequest{}
@@ -100,7 +97,7 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 		return respond.BadRequest("bad payload")
 	}
 
-	err := h.processPayload(ctx, &payload.Payload)
+	err = h.processPayload(ctx, &payload.Payload)
 	if err != nil {
 		log.Error().Err(err).Msgf("Processing failed: %s", err)
 		updateMetrics(false, http.StatusBadGateway, start)
