@@ -184,6 +184,11 @@ func (h *handler) processReport(ctx context.Context, report *reportqueue.QueueEn
 		return fmt.Errorf("unsupported URI %q", subject)
 	}
 
+	profile, err := bsky.ActorGetProfile(ctx, h.client, target.GetProfile())
+	if err != nil {
+		return err
+	}
+
 	existing, err := tickets.FindByDID(ctx, h.ticketsClient, target.GetProfile())
 	if err != nil {
 		return fmt.Errorf("failed to query for existing tickets for %q: %w", target.GetProfile(), err)
@@ -207,9 +212,15 @@ func (h *handler) processReport(ctx context.Context, report *reportqueue.QueueEn
 	}
 
 	ticket := tickets.SelectDedupeTicket(ctx, existing)
-	ticket, err = h.createOrUpdateTicket(ctx, url, ticket, reportResp, target.GetProfile())
+	if ticket == nil {
+		ticket, err = h.createAccountTicket(ctx, target.GetProfile(), report.ReportedBy, profile)
+		if err != nil {
+			return fmt.Errorf("failed to create ticket: %w", err)
+		}
+	}
+	err = h.postReport(ctx, ticket, reportResp, target, profile)
 	if err != nil {
-		return fmt.Errorf("failed to create or update ticket: %w", err)
+		return fmt.Errorf("failed to update ticket: %w", err)
 	}
 	// TODO: write report metadata into sqlite.
 
@@ -217,11 +228,58 @@ func (h *handler) processReport(ctx context.Context, report *reportqueue.QueueEn
 	return nil
 }
 
-func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, subject string) (*redmine.Issue, error) {
+func (h *handler) getTicketsClient(userDID string) *redmine.Client {
+	userID := tickets.UserForDID(userDID)
+	if userID != "" {
+		// TODO: check if the user actually exist and fallback to
+		// default behaviour if it doesn't.
+		r := *h.ticketsClient
+		return r.Impersonate(userID)
+	}
+	return h.ticketsClient
+}
+
+func (h *handler) createAccountTicket(ctx context.Context, did string, reportedBy string, profile *bsky.ActorDefs_ProfileViewDetailed) (*redmine.Issue, error) {
+	userID := tickets.UserForDID(reportedBy)
+	ticketsClient := h.getTicketsClient(reportedBy)
+	uploader := attachments.NewGlobalAttachmentCreator(ticketsClient)
+
+	profileText, err := format.Profile(ctx, profile, uploader)
+	if err != nil {
+		return nil, fmt.Errorf("formatting profile: %w", err)
+	}
+
+	opts := []tickets.TicketOption{
+		tickets.Subject(profile.Handle),
+		tickets.DID(did),
+		tickets.Handle(profile.Handle),
+		tickets.Description(profileText),
+		tickets.Attachments(uploader.Created()),
+		tickets.Type(tickets.TypeTicket),
+	}
+	if profile.DisplayName != nil {
+		opts = append(opts, tickets.DisplayName(*profile.DisplayName))
+	}
+	if userID != "" {
+		opts = append(opts,
+			tickets.Priority(tickets.PriorityNormal),
+			// tickets.CreationTrigger(tickets.TriggerManual),
+		)
+	} else {
+		opts = append(opts,
+			tickets.Priority(tickets.PriorityUrgent),
+			// tickets.CreationTrigger(tickets.TriggerEscalation),
+		)
+	}
+
+	return tickets.Create(ctx, ticketsClient, opts...)
+}
+
+func (h *handler) postReport(ctx context.Context, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, url bskyurl.TargetWithProfile, profile *bsky.ActorDefs_ProfileViewDetailed) error {
 	log := zerolog.Ctx(ctx)
 
-	ticketsClient := h.ticketsClient
-
+	userID := tickets.UserForDID(report.ReportedBy)
+	ticketsClient := h.getTicketsClient(report.ReportedBy)
 	uploader := attachments.NewGlobalAttachmentCreator(ticketsClient)
 
 	text := ""
@@ -250,13 +308,7 @@ func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, 
 		}
 	}
 
-	userID := tickets.UserForDID(report.ReportedBy)
 	if userID != "" {
-		// TODO: check if the user actually exist and fallback to
-		// default behaviour if it doesn't.
-		ticketsClient = ticketsClient.Impersonate(userID)
-		uploader = attachments.NewGlobalAttachmentCreator(ticketsClient)
-
 		parts := []string{}
 		if reasonTypeText != "" {
 			parts = append(parts, reasonTypeText)
@@ -295,20 +347,10 @@ func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, 
 		reasonText += strings.Join(parts, ":\n\n")
 	}
 
-	profile, err := bsky.ActorGetProfile(ctx, h.client, subject)
-	if err != nil {
-		return nil, err
-	}
-	if b, err := json.MarshalIndent(profile, "", "  "); err == nil {
-		if _, err := uploader.Upload(ctx, fmt.Sprintf("profile_%s.json", time.Now().Format("20060102_030405")), b); err != nil {
-			log.Warn().Err(err).Msgf("Failed to upload profile.json: %s", err)
-		}
-	}
-
 	pdsClient := *h.client
-	pds, _, err := resolver.GetPDSEndpointAndPublicKey(ctx, subject)
+	pds, _, err := resolver.GetPDSEndpointAndPublicKey(ctx, url.GetProfile())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the PDS address: %w", err)
+		return fmt.Errorf("failed to get the PDS address: %w", err)
 	}
 	pdsClient.Host = pds.String()
 
@@ -325,15 +367,15 @@ func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, 
 		}
 		err := pdsClient.Do(ctx, xrpc.Query, "", "com.atproto.repo.getRecord", params, nil, &record)
 		if err != nil {
-			return nil, fmt.Errorf("fetching post: %w", err)
+			return fmt.Errorf("fetching post: %w", err)
 		}
 		post, ok := record.Value.Val.(*bsky.FeedPost)
 		if !ok {
-			return nil, fmt.Errorf("post if on unexpected type %T", record.Value.Val)
+			return fmt.Errorf("post if on unexpected type %T", record.Value.Val)
 		}
 		postText, err := format.Post(ctx, h.client, post, profile, t.Rkey, uploader)
 		if err != nil {
-			return nil, fmt.Errorf("formatting post: %w", err)
+			return fmt.Errorf("formatting post: %w", err)
 		}
 		text += postText + "\n\n"
 
@@ -346,14 +388,14 @@ func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, 
 		if ticket == nil {
 			profileText, err := format.Profile(ctx, profile, uploader)
 			if err != nil {
-				return nil, fmt.Errorf("formatting profile: %w", err)
+				return fmt.Errorf("formatting profile: %w", err)
 			}
 			text += profileText
 		}
 	case *bskyurl.Profile:
 		profileText, err := format.Profile(ctx, profile, uploader)
 		if err != nil {
-			return nil, fmt.Errorf("formatting profile: %w", err)
+			return fmt.Errorf("formatting profile: %w", err)
 		}
 		text += profileText
 	default:
@@ -367,80 +409,40 @@ func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, 
 		text += fmt.Sprintf("\n`%s`\n", reportSubject)
 	}
 
-	b, _ := json.MarshalIndent(report, "", "  ")
-	_, err = uploader.Upload(ctx, fmt.Sprintf("report_%s_%s.json", report.ReportedBy, time.Now().Format(time.DateOnly)), b)
-	if err != nil {
-		return nil, fmt.Errorf("uploading report.json: %w", err)
+	if b, err := json.MarshalIndent(profile, "", "  "); err == nil {
+		if _, err := uploader.Upload(ctx, fmt.Sprintf("profile_%s.json", time.Now().Format("20060102_030405")), b); err != nil {
+			log.Warn().Err(err).Msgf("Failed to upload profile.json: %s", err)
+		}
 	}
 
-	if ticket == nil {
-		opts := []tickets.TicketOption{
-			tickets.Subject(profile.Handle),
-			tickets.DID(subject),
-			tickets.Handle(profile.Handle),
-			tickets.Description(text),
-			tickets.Attachments(uploader.Created()),
-			tickets.Type(tickets.TypeTicket),
-		}
-		if profile.DisplayName != nil {
-			opts = append(opts, tickets.DisplayName(*profile.DisplayName))
-		}
-		if userID != "" {
-			opts = append(opts,
-				tickets.Priority(tickets.PriorityNormal),
-				// tickets.CreationTrigger(tickets.TriggerManual),
-			)
-		} else {
-			opts = append(opts,
-				tickets.Priority(tickets.PriorityUrgent),
-				// tickets.CreationTrigger(tickets.TriggerEscalation),
-			)
-		}
+	if reasonText != "" {
+		text = reasonText + "\n\n" + text
+	}
+	updates := []tickets.TicketOption{tickets.WithNote(text)}
 
-		ticket, err = tickets.Create(ctx, ticketsClient, opts...)
+	// progress := 0
+	// if ticket.PercentageDone != nil {
+	// 	progress = *ticket.PercentageDone
+	// }
+	// if progress >= 90 {
+	// 	updates = append(updates, tickets.Status(tickets.StatusInProgress))
+	// }
+
+	if userID == "" {
+		prio, ok := tickets.GetPriority(ticket)
+		if !ok || prio < tickets.PriorityHigh {
+			updates = append(updates, tickets.Priority(tickets.PriorityHigh))
+		}
+	}
+
+	uploads := uploader.Created()
+	updates = append(updates, tickets.Attachments(uploads))
+
+	if len(updates) > 0 {
+		ticket, err = tickets.Update(ctx, ticketsClient, ticket, updates...)
 		if err != nil {
-			return nil, err
-		}
-
-		if reasonText != "" {
-			_, err = tickets.AddNote(ctx, ticketsClient, ticket, reasonText)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		if reasonText != "" {
-			text = reasonText + "\n\n" + text
-		}
-		updates := []tickets.TicketOption{tickets.WithNote(text)}
-
-		// progress := 0
-		// if ticket.PercentageDone != nil {
-		// 	progress = *ticket.PercentageDone
-		// }
-		// if progress >= 90 {
-		// 	updates = append(updates, tickets.Status(tickets.StatusInProgress))
-		// }
-
-		if userID == "" {
-			prio, ok := tickets.GetPriority(ticket)
-			if !ok || prio < tickets.PriorityHigh {
-				updates = append(updates, tickets.Priority(tickets.PriorityHigh))
-			}
-		}
-
-		uploads := uploader.Created()
-		if len(uploads) > 0 {
-			updates = append(updates, tickets.Attachments(uploads))
-		}
-
-		if len(updates) > 0 {
-			ticket, err = tickets.Update(ctx, ticketsClient, ticket, updates...)
+			return err
 		}
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	return ticket, nil
+	return nil
 }
