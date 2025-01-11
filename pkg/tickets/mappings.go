@@ -26,17 +26,6 @@ const (
 	TypeAppeal
 )
 
-type TicketCreationTrigger int
-
-const (
-	TriggerManual TicketCreationTrigger = iota
-	TriggerEscalation
-	TriggerBlockedMods
-	TriggerFollow
-	TriggerProfile
-	TriggerInteraction
-)
-
 type TicketStatus int
 
 const (
