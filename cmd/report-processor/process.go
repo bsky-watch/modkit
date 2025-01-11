@@ -412,11 +412,7 @@ func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, 
 		if reasonText != "" {
 			text = reasonText + "\n\n" + text
 		}
-		_, err = tickets.AddNote(ctx, ticketsClient, ticket, text)
-		if err != nil {
-			return nil, err
-		}
-		updates := []tickets.TicketOption{}
+		updates := []tickets.TicketOption{tickets.WithNote(text)}
 
 		// progress := 0
 		// if ticket.PercentageDone != nil {
