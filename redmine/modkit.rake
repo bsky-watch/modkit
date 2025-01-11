@@ -25,12 +25,15 @@ namespace :modkit do
       "ticketTypes" => {
         "ticket" => Tracker.where(:name => "Ticket").take.id,
         "appeal" => Tracker.where(:name => "Appeal").take.id,
+        "recordTicket" => Tracker.where(:name => "Record ticket").take.id,
       },
       "fields" => {
         "did" => IssueCustomField.where(:name => "DID").take.id,
         "handle" => IssueCustomField.where(:name => "Handle").take.id,
         "displayName" => IssueCustomField.where(:name => "Display name").take.id,
         "addToLists" => IssueCustomField.where(:name => "Add to lists").take.id,
+        "subject" => IssueCustomField.where(:name => "Subject").take.id,
+        "labels" => IssueCustomField.where(:name => "Labels").take.id,
       },
       "users" => [{
         "username" => "<login name of the user in Redmine>",

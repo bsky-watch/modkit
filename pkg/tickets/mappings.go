@@ -55,8 +55,9 @@ type IDMappings struct {
 	} `yaml:"statuses"`
 
 	TicketTypes struct {
-		Ticket int `yaml:"ticket"`
-		Appeal int `yaml:"appeal"`
+		Ticket       int `yaml:"ticket"`
+		Appeal       int `yaml:"appeal"`
+		RecordTicket int `yaml:"recordTicket"`
 	} `yaml:"ticketTypes"`
 
 	Fields struct {
@@ -67,6 +68,8 @@ type IDMappings struct {
 		Clearsky    int `yaml:"clearsky"`
 		Approver    int `yaml:"approver"`
 		AddToLists  int `yaml:"addToLists"`
+		Subject     int `yaml:"subject"`
+		Labels      int `yaml:"labels"`
 	} `yaml:"fields"`
 
 	Users []struct {

@@ -154,6 +154,7 @@ module Redmine
             ticket = Tracker.create!(:name => 'Ticket', :default_status_id => new.id, :is_in_roadmap => false, :position => 1)
             incident = Tracker.create!(:name => 'Incident', :default_status_id => new.id, :is_in_roadmap => false, :position => 2)
             appeal = Tracker.create!(:name => 'Appeal', :default_status_id => new.id, :is_in_roadmap => false, :position => 3)
+            recordTicket = Tracker.create!(:name => 'Record ticket', :default_status_id => new.id, :is_in_roadmap => false)
 
             ticket.core_fields = %w(assigned_to_id parent_issue_id description priority_id).freeze
             ticket.save!
@@ -164,6 +165,8 @@ module Redmine
             appeal.core_fields = %w(assigned_to_id parent_issue_id description priority_id).freeze
             appeal.save!
 
+            recordTicket.core_fields = %w(assigned_to_id parent_issue_id description priority_id).freeze
+            recordTicket.save!
 
 
             # Set trackers as defaults for new projects
@@ -171,6 +174,7 @@ module Redmine
               ticket.id.to_s,
               incident.id.to_s,
               appeal.id.to_s,
+              # recordTicket not enabled by default
             ]
 
             Setting.app_title = 'Modkit'
@@ -384,12 +388,33 @@ module Redmine
                 :possible_values => ['dummy'],
               ),
             ]
+            record_ticket_fields = [
+              IssueCustomField.create!(
+                :name => "Subject",
+                :field_format => "string",
+                :description => "Subject of the ticket",
+                :is_filter => true,
+                :searchable => true,
+                :regexp => "at://.*",
+              ),
+              IssueCustomField.create!(
+                :name => "Labels",
+                :field_format => "list",
+                :is_filter => true,
+                :multiple => true,
+                :possible_values => ['dummy'],
+              ),
+            ]
             ticket.custom_fields << common_fields
             ticket.custom_fields << ticket_fields
             ticket.save!
 
             appeal.custom_fields << common_fields
             appeal.save!
+
+            recordTicket.custom_fields << common_fields
+            recordTicket.custom_fields << record_ticket_fields
+            recordTicket.save!
 
             # Automation user
             modbot = User.create!(
@@ -407,7 +432,7 @@ module Redmine
               :name => 'Tickets',
               :identifier => 'tickets',
               :is_public => false,
-              :issue_custom_fields => common_fields + ticket_fields,
+              :issue_custom_fields => common_fields + ticket_fields + record_ticket_fields,
             )
 
             m = Member.new(
