@@ -25,6 +25,27 @@ import (
 	"bsky.watch/modkit/pkg/tickets"
 )
 
+type handler struct {
+	client        *xrpc.Client
+	ticketsClient *redmine.Client
+	idCipher      *reportqueue.IdCipher
+	valkeyRemotes []string
+}
+
+func NewHandler(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client, cfg *Config) (*handler, error) {
+	idCipher, err := reportqueue.NewIdCipher(cfg.TicketIDEncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &handler{
+		client:        client,
+		ticketsClient: ticketsClient,
+		idCipher:      idCipher,
+		valkeyRemotes: append([]string{cfg.PersistentValkeyAddr}, cfg.RemoteReportQueueValkey...),
+	}, nil
+}
+
 type workItem struct {
 	Payload *reportqueue.QueueEntry
 	Remote  *reportqueue.ValkeyConsumer
@@ -91,10 +112,8 @@ func pullReports(ctx context.Context, client *reportqueue.ValkeyConsumer, label 
 	}
 }
 
-func run(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client, idCipher *reportqueue.IdCipher) error {
+func (h *handler) Run(ctx context.Context) error {
 	log := zerolog.Ctx(ctx)
-
-	remotes := append([]string{cfg.PersistentValkeyAddr}, cfg.RemoteReportQueueValkey...)
 
 	ch := make(chan workItem)
 
@@ -104,7 +123,7 @@ func run(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client
 		cancel()
 		wg.Wait()
 	}()
-	for _, addr := range remotes {
+	for _, addr := range h.valkeyRemotes {
 		c, err := valkey.NewClient(valkey.ClientOption{
 			InitAddress: []string{addr},
 		})
@@ -128,7 +147,7 @@ func run(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client
 		select {
 		case item := <-ch:
 			start := time.Now()
-			err := processReport(ctx, client, ticketsClient, idCipher, item.Payload)
+			err := h.processReport(ctx, item.Payload)
 			item.errCh <- err
 			processingStats.WithLabelValues(item.Label, fmt.Sprint(err == nil)).Observe(time.Since(start).Seconds())
 			reportsProcessed.WithLabelValues(item.Label, fmt.Sprint(err == nil)).Inc()
@@ -139,7 +158,7 @@ func run(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client
 	}
 }
 
-func processReport(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client, idCipher *reportqueue.IdCipher, report *reportqueue.QueueEntry) error {
+func (h *handler) processReport(ctx context.Context, report *reportqueue.QueueEntry) error {
 	log := zerolog.Ctx(ctx).With().Str("sender", report.ReportedBy).
 		Str("report_id", report.ID).Logger()
 
@@ -165,7 +184,7 @@ func processReport(ctx context.Context, client *xrpc.Client, ticketsClient *redm
 		return fmt.Errorf("unsupported URI %q", subject)
 	}
 
-	existing, err := tickets.FindByDID(ctx, ticketsClient, target.GetProfile())
+	existing, err := tickets.FindByDID(ctx, h.ticketsClient, target.GetProfile())
 	if err != nil {
 		return fmt.Errorf("failed to query for existing tickets for %q: %w", target.GetProfile(), err)
 	}
@@ -184,11 +203,11 @@ func processReport(ctx context.Context, client *xrpc.Client, ticketsClient *redm
 	if n, err := strconv.ParseUint(report.ID, 10, 64); err != nil {
 		log.Warn().Err(err).Msgf("Failed to parse %q as uint64: %s", report.ID, err)
 	} else {
-		reportResp.Id = idCipher.Encrypt(n)
+		reportResp.Id = h.idCipher.Encrypt(n)
 	}
 
 	ticket := tickets.SelectDedupeTicket(ctx, existing)
-	ticket, err = createOrUpdateTicket(ctx, client, ticketsClient, url, ticket, reportResp, target.GetProfile())
+	ticket, err = h.createOrUpdateTicket(ctx, url, ticket, reportResp, target.GetProfile())
 	if err != nil {
 		return fmt.Errorf("failed to create or update ticket: %w", err)
 	}
@@ -198,8 +217,10 @@ func processReport(ctx context.Context, client *xrpc.Client, ticketsClient *redm
 	return nil
 }
 
-func createOrUpdateTicket(ctx context.Context, client *xrpc.Client, ticketsClient *redmine.Client, url bskyurl.Target, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, subject string) (*redmine.Issue, error) {
+func (h *handler) createOrUpdateTicket(ctx context.Context, url bskyurl.Target, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, subject string) (*redmine.Issue, error) {
 	log := zerolog.Ctx(ctx)
+
+	ticketsClient := h.ticketsClient
 
 	uploader := attachments.NewGlobalAttachmentCreator(ticketsClient)
 
@@ -246,7 +267,7 @@ func createOrUpdateTicket(ctx context.Context, client *xrpc.Client, ticketsClien
 		reasonText += strings.Join(parts, ": ") + "\n\n"
 	} else {
 		reporterDisplayName := report.ReportedBy
-		reporter, err := bsky.ActorGetProfile(ctx, client, report.ReportedBy)
+		reporter, err := bsky.ActorGetProfile(ctx, h.client, report.ReportedBy)
 		if err != nil {
 			log.Warn().Err(err).Msgf("Failed to fetch reporter profile %q: %s", report.ReportedBy, err)
 		} else {
@@ -274,7 +295,7 @@ func createOrUpdateTicket(ctx context.Context, client *xrpc.Client, ticketsClien
 		reasonText += strings.Join(parts, ":\n\n")
 	}
 
-	profile, err := bsky.ActorGetProfile(ctx, client, subject)
+	profile, err := bsky.ActorGetProfile(ctx, h.client, subject)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +305,7 @@ func createOrUpdateTicket(ctx context.Context, client *xrpc.Client, ticketsClien
 		}
 	}
 
-	pdsClient := *client
+	pdsClient := *h.client
 	pds, _, err := resolver.GetPDSEndpointAndPublicKey(ctx, subject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get the PDS address: %w", err)
@@ -310,7 +331,7 @@ func createOrUpdateTicket(ctx context.Context, client *xrpc.Client, ticketsClien
 		if !ok {
 			return nil, fmt.Errorf("post if on unexpected type %T", record.Value.Val)
 		}
-		postText, err := format.Post(ctx, client, post, profile, t.Rkey, uploader)
+		postText, err := format.Post(ctx, h.client, post, profile, t.Rkey, uploader)
 		if err != nil {
 			return nil, fmt.Errorf("formatting post: %w", err)
 		}

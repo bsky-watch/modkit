@@ -17,7 +17,6 @@ import (
 	"bsky.watch/utils/xrpcauth"
 
 	"bsky.watch/modkit/pkg/cliutil"
-	"bsky.watch/modkit/pkg/reportqueue"
 	"bsky.watch/modkit/pkg/tickets"
 )
 
@@ -58,9 +57,9 @@ func runMain(ctx context.Context) error {
 		return fmt.Errorf("missing ticket ID encryption key")
 	}
 
-	idCipher, err := reportqueue.NewIdCipher(cfg.TicketIDEncryptionKey)
+	handler, err := NewHandler(ctx, client, ticketsClient, &cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("constructing report handler: %w", err)
 	}
 
 	go func() {
@@ -72,7 +71,7 @@ func runMain(ctx context.Context) error {
 
 	log.Info().Msgf("Startup complete")
 
-	return run(ctx, client, ticketsClient, idCipher)
+	return handler.Run(ctx)
 }
 
 func main() {
