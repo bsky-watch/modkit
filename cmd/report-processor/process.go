@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -11,11 +13,13 @@ import (
 
 	"bsky.watch/redmine"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/valkey-io/valkey-go"
 
 	"bsky.watch/utils/bskyurl"
 	"github.com/bluesky-social/indigo/api/atproto"
 	"github.com/bluesky-social/indigo/api/bsky"
+	"github.com/bluesky-social/indigo/lex/util"
 	"github.com/bluesky-social/indigo/xrpc"
 
 	"bsky.watch/modkit/pkg/attachments"
@@ -218,13 +222,63 @@ func (h *handler) processReport(ctx context.Context, report *reportqueue.QueueEn
 			return fmt.Errorf("failed to create ticket: %w", err)
 		}
 	}
-	err = h.postReport(ctx, ticket, reportResp, target, profile)
-	if err != nil {
-		return fmt.Errorf("failed to update ticket: %w", err)
+
+	if target, ok := target.(bskyurl.TargetRecord); ok && cfg.EnablePerRecordTickets {
+		// One ticket for each unique subject.
+		uri, err := makeNormalizedURI(ctx, h.client, target)
+		if err != nil {
+			return fmt.Errorf("failed to generate normalized URI: %w", err)
+		}
+
+		pdsClient := *h.client
+		pds, _, err := resolver.GetPDSEndpointAndPublicKey(ctx, target.GetProfile())
+		if err != nil {
+			return fmt.Errorf("failed to get the PDS address: %w", err)
+		}
+		pdsClient.Host = pds.String()
+
+		// Doesn't work with atproto.brid.gy: generated code always sends empty cid, which confuses it.
+		// record, err := atproto.RepoGetRecord(ctx, &pdsClient, "", "app.bsky.feed.post", t.Profile, t.Rkey)
+
+		var record atproto.RepoGetRecord_Output
+		params := map[string]interface{}{
+			"collection": target.GetCollection(),
+			"repo":       target.GetProfile(),
+			"rkey":       target.GetRKey(),
+		}
+		err = pdsClient.Do(ctx, xrpc.Query, "", "com.atproto.repo.getRecord", params, nil, &record)
+		if err != nil {
+			return fmt.Errorf("fetching post: %w", err)
+		}
+
+		existing, err := tickets.FindBySubject(ctx, h.ticketsClient, uri)
+		if err != nil {
+			return fmt.Errorf("failed to query for existing tickets for %q: %w", uri, err)
+		}
+
+		recordTicket := tickets.SelectDedupeTicket(ctx, existing)
+		if recordTicket == nil {
+			recordTicket, err = h.createRecordTicket(ctx, uri, target.GetRKey(), record.Value, target.GetProfile(), report.ReportedBy, profile, ticket)
+			if err != nil {
+				return fmt.Errorf("failed to create ticket: %w", err)
+			}
+		}
+
+		err = h.postReport(ctx, recordTicket, reportResp, record.Value)
+		if err != nil {
+			return err
+		}
+
+		log.Info().Msgf("Ticket ID: %d, Account ticket ID: %d", recordTicket.Id, ticket.Id)
+	} else {
+		// One ticket per account (reports for all records go into the same ticket).
+		err = h.postReportOnAccountTicket(ctx, ticket, reportResp, target, profile)
+		if err != nil {
+			return fmt.Errorf("failed to update ticket: %w", err)
+		}
+		log.Info().Msgf("Ticket ID: %d", ticket.Id)
 	}
 	// TODO: write report metadata into sqlite.
-
-	log.Info().Msgf("Ticket ID: %d", ticket.Id)
 	return nil
 }
 
@@ -275,7 +329,138 @@ func (h *handler) createAccountTicket(ctx context.Context, did string, reportedB
 	return tickets.Create(ctx, ticketsClient, opts...)
 }
 
-func (h *handler) postReport(ctx context.Context, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, url bskyurl.TargetWithProfile, profile *bsky.ActorDefs_ProfileViewDetailed) error {
+func (h *handler) createRecordTicket(ctx context.Context, uri string, rkey string, record *util.LexiconTypeDecoder, did string, reportedBy string, profile *bsky.ActorDefs_ProfileViewDetailed, accountTicket *redmine.Issue) (*redmine.Issue, error) {
+	userID := tickets.UserForDID(reportedBy)
+	ticketsClient := h.getTicketsClient(reportedBy)
+	uploader := attachments.NewGlobalAttachmentCreator(ticketsClient)
+
+	text := ""
+	switch record := record.Val.(type) {
+	case *bsky.FeedPost:
+		postText, err := format.Post(ctx, h.client, record, profile, rkey, uploader)
+		if err != nil {
+			return nil, fmt.Errorf("formatting post: %w", err)
+		}
+		text += postText
+
+		if b, err := json.MarshalIndent(record, "", "  "); err == nil {
+			if _, err := uploader.Upload(ctx, fmt.Sprintf("post_%s.json", rkey), b); err != nil {
+				log.Warn().Err(err).Msgf("Failed to upload post.json: %s", err)
+			}
+		}
+	default:
+		b, err := json.MarshalIndent(record, "", "  ")
+		if err == nil {
+			if _, err := uploader.Upload(ctx, fmt.Sprintf("record_%s.json", rkey), b); err != nil {
+				log.Warn().Err(err).Msgf("Failed to upload record.json: %s", err)
+			}
+
+			text += fmt.Sprintf("```json\n%s\n```", string(b))
+		}
+	}
+
+	opts := []tickets.TicketOption{
+		tickets.Subject(fmt.Sprintf("%s %s", profile.Handle, rkey)),
+		tickets.DID(did),
+		tickets.Handle(profile.Handle),
+		tickets.Description(text),
+		tickets.Attachments(uploader.Created()),
+		tickets.Type(tickets.TypeRecordTicket),
+		tickets.ReportSubject(uri),
+	}
+	if profile.DisplayName != nil {
+		opts = append(opts, tickets.DisplayName(*profile.DisplayName))
+	}
+	if userID != "" {
+		opts = append(opts,
+			tickets.Priority(tickets.PriorityNormal),
+		)
+	} else {
+		opts = append(opts,
+			tickets.Priority(tickets.PriorityUrgent),
+		)
+	}
+
+	ticket, err := tickets.Create(ctx, ticketsClient, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = ticketsClient.CreateIssueRelation(redmine.IssueRelation{
+		IssueId:      ticket.Id,
+		IssueToId:    accountTicket.Id,
+		RelationType: "relates",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ticket, nil
+}
+
+var reasonTypes = map[string]string{
+	"com.atproto.moderation.defs#reasonOther":      "",
+	"com.atproto.moderation.defs#reasonSpam":       "Spam",
+	"com.atproto.moderation.defs#reasonViolation":  "ToS violation",
+	"com.atproto.moderation.defs#reasonMisleading": "Impersonation",
+	"com.atproto.moderation.defs#reasonSexual":     "Sexual content",
+	"com.atproto.moderation.defs#reasonRude":       "Antisocial behavior",
+	"com.atproto.moderation.defs#reasonAppeal":     "Appeal",
+}
+
+func (h *handler) reasonTypeText(report *atproto.ModerationCreateReport_Output) string {
+	if report.ReasonType == nil {
+		return ""
+	}
+	if s, found := reasonTypes[*report.ReasonType]; found {
+		return s
+	}
+	return fmt.Sprintf("`%s`", *report.ReasonType)
+}
+
+func (h *handler) formatReasonTextAsModerator(report *atproto.ModerationCreateReport_Output) string {
+	parts := []string{}
+	reasonTypeText := h.reasonTypeText(report)
+	if reasonTypeText != "" {
+		parts = append(parts, reasonTypeText)
+	}
+	if report.Reason != nil && *report.Reason != "" {
+		parts = append(parts, *report.Reason)
+	}
+	return strings.Join(parts, ": ")
+}
+
+func (h *handler) formatReasonTextAsSubscriber(ctx context.Context, report *atproto.ModerationCreateReport_Output) string {
+	reporterDisplayName := report.ReportedBy
+	reporter, err := bsky.ActorGetProfile(ctx, h.client, report.ReportedBy)
+	if err != nil {
+		log.Warn().Err(err).Msgf("Failed to fetch reporter profile %q: %s", report.ReportedBy, err)
+	} else {
+		reporterDisplayName = reporter.Handle
+		if reporter.DisplayName != nil {
+			reporterDisplayName = fmt.Sprintf("%s (%s)", *reporter.DisplayName, reporter.Handle)
+		}
+	}
+
+	parts := []string{fmt.Sprintf("Reported by [%s](https://bsky.app/profile/%s)", reporterDisplayName, report.ReportedBy)}
+
+	reasonTypeText := h.reasonTypeText(report)
+	if reasonTypeText != "" {
+		parts = append(parts, reasonTypeText)
+	}
+
+	if report.Reason != nil && *report.Reason != "" {
+		s := ""
+		for _, line := range strings.Split(*report.Reason, "\n") {
+			s += "> " + line + "\n"
+		}
+		parts = append(parts, s)
+
+	}
+
+	return strings.Join(parts, ":\n\n")
+}
+
+func (h *handler) postReportOnAccountTicket(ctx context.Context, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, url bskyurl.TargetWithProfile, profile *bsky.ActorDefs_ProfileViewDetailed) error {
 	log := zerolog.Ctx(ctx)
 
 	userID := tickets.UserForDID(report.ReportedBy)
@@ -283,68 +468,12 @@ func (h *handler) postReport(ctx context.Context, ticket *redmine.Issue, report 
 	uploader := attachments.NewGlobalAttachmentCreator(ticketsClient)
 
 	text := ""
-	reasonTypeText := ""
 	reasonText := ""
 
-	if report.ReasonType != nil {
-		switch *report.ReasonType {
-		case "com.atproto.moderation.defs#reasonOther":
-			// no-op
-		case "com.atproto.moderation.defs#reasonSpam":
-			reasonTypeText = "Spam"
-		case "com.atproto.moderation.defs#reasonViolation":
-			reasonTypeText = "ToS violation"
-		case "com.atproto.moderation.defs#reasonMisleading":
-			reasonTypeText = "Impersonation"
-		case "com.atproto.moderation.defs#reasonSexual":
-			reasonTypeText = "Sexual content"
-		case "com.atproto.moderation.defs#reasonRude":
-			reasonTypeText = "Antisocial behavior"
-		case "com.atproto.moderation.defs#reasonAppeal":
-			// TODO: auto-convert into appeal?
-			reasonTypeText = "Appeal"
-		default:
-			reasonTypeText += fmt.Sprintf("`%s`", *report.ReasonType)
-		}
-	}
-
 	if userID != "" {
-		parts := []string{}
-		if reasonTypeText != "" {
-			parts = append(parts, reasonTypeText)
-		}
-		if report.Reason != nil && *report.Reason != "" {
-			parts = append(parts, *report.Reason)
-		}
-		reasonText += strings.Join(parts, ": ") + "\n\n"
+		reasonText = h.formatReasonTextAsModerator(report)
 	} else {
-		reporterDisplayName := report.ReportedBy
-		reporter, err := bsky.ActorGetProfile(ctx, h.client, report.ReportedBy)
-		if err != nil {
-			log.Warn().Err(err).Msgf("Failed to fetch reporter profile %q: %s", report.ReportedBy, err)
-		} else {
-			reporterDisplayName = reporter.Handle
-			if reporter.DisplayName != nil {
-				reporterDisplayName = fmt.Sprintf("%s (%s)", *reporter.DisplayName, reporter.Handle)
-			}
-		}
-
-		parts := []string{fmt.Sprintf("Reported by [%s](https://bsky.app/profile/%s)", reporterDisplayName, report.ReportedBy)}
-
-		if reasonTypeText != "" {
-			parts = append(parts, reasonTypeText)
-		}
-
-		if report.Reason != nil && *report.Reason != "" {
-			s := ""
-			for _, line := range strings.Split(*report.Reason, "\n") {
-				s += "> " + line + "\n"
-			}
-			parts = append(parts, s)
-
-		}
-
-		reasonText += strings.Join(parts, ":\n\n")
+		reasonText = h.formatReasonTextAsSubscriber(ctx, report)
 	}
 
 	pdsClient := *h.client
@@ -445,4 +574,53 @@ func (h *handler) postReport(ctx context.Context, ticket *redmine.Issue, report 
 		}
 	}
 	return nil
+}
+
+func (h *handler) postReport(ctx context.Context, ticket *redmine.Issue, report *atproto.ModerationCreateReport_Output, record *util.LexiconTypeDecoder) error {
+	userID := tickets.UserForDID(report.ReportedBy)
+	ticketsClient := h.getTicketsClient(report.ReportedBy)
+	uploader := attachments.NewGlobalAttachmentCreator(ticketsClient)
+
+	text := ""
+
+	if userID != "" {
+		text = h.formatReasonTextAsModerator(report)
+	} else {
+		text = h.formatReasonTextAsSubscriber(ctx, report)
+	}
+
+	b, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling report: %w", err)
+	}
+	if _, err := uploader.Upload(ctx, fmt.Sprintf("report_%s_%s.json", report.ReportedBy, time.Now().Format(time.DateOnly)), b); err != nil {
+		return fmt.Errorf("uploading report: %w", err)
+	}
+
+	ticket, err = tickets.Update(ctx, ticketsClient, ticket,
+		tickets.WithNote(text),
+		tickets.Attachments(uploader.Created()),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func makeNormalizedURI(ctx context.Context, client *xrpc.Client, target bskyurl.TargetRecord) (string, error) {
+	profile := target.GetProfile()
+	if !strings.HasPrefix(profile, "did:") {
+		resp, err := atproto.IdentityResolveHandle(ctx, client, profile)
+		if err != nil {
+			return "", err
+		}
+		profile = resp.Did
+	}
+
+	var u url.URL
+	u.Scheme = "at"
+	u.Host = profile
+	u.Path = path.Join("/", target.GetCollection(), target.GetRKey())
+
+	return u.String(), nil
 }

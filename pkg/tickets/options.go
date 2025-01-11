@@ -72,6 +72,8 @@ func Type(typ TicketType) TicketOption {
 			value = mappings.TicketTypes.Ticket
 		case TypeAppeal:
 			value = mappings.TicketTypes.Appeal
+		case TypeRecordTicket:
+			value = mappings.TicketTypes.RecordTicket
 		}
 		if value < 0 {
 			return fmt.Errorf("missing mapping for ticket type %+v", typ)
@@ -155,6 +157,20 @@ func Author(user string) TicketOption {
 func WithNote(text string) TicketOption {
 	return func(ticket *ticketData) error {
 		ticket.Notes = text
+		return nil
+	}
+}
+
+func ReportSubject(uri string) TicketOption {
+	return func(ticket *ticketData) error {
+		field := mappings.Fields.Subject
+		if field == 0 {
+			return fmt.Errorf("missing mapping for display name field")
+		}
+		ticket.CustomFields = append(ticket.CustomFields, &redmine.CustomField{
+			Id:    field,
+			Value: uri,
+		})
 		return nil
 	}
 }

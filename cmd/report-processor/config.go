@@ -26,6 +26,7 @@ type Config struct {
 	ListServerURL           string   `split_words:"true"`
 	PersistentValkeyAddr    string   `split_words:"true"`
 	RemoteReportQueueValkey []string `split_words:"true"`
+	EnablePerRecordTickets  bool     `split_words:"true"`
 }
 
 func (cfg *Config) LoadDefaultsFromConfig(filename string) error {
@@ -49,6 +50,9 @@ func (cfg *Config) LoadDefaultsFromConfig(filename string) error {
 	}
 	if cfg.TicketIDEncryptionKey == "" {
 		cfg.TicketIDEncryptionKey = modkitConfig.TicketIDEncryptionKey
+	}
+	if cfg.EnablePerRecordTickets == false {
+		cfg.EnablePerRecordTickets = modkitConfig.EnablePerRecordTickets
 	}
 	return nil
 }

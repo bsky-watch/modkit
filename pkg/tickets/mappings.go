@@ -24,6 +24,7 @@ type TicketType int
 const (
 	TypeTicket TicketType = iota
 	TypeAppeal
+	TypeRecordTicket
 )
 
 type TicketStatus int

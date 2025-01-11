@@ -46,9 +46,9 @@ func Create(ctx context.Context, client *redmine.Client, opts ...TicketOption) (
 
 	for _, relatedId := range related {
 		_, err := client.CreateIssueRelation(redmine.IssueRelation{
-			IssueId:      fmt.Sprint(ticket.Id),
-			IssueToId:    fmt.Sprint(relatedId),
-			RelationType: "related to",
+			IssueId:      ticket.Id,
+			IssueToId:    relatedId,
+			RelationType: "relates",
 		})
 		if err != nil {
 			log.Warn().Err(err).Msgf("Failed to create relationship from %d to %d: %s", ticket.Id, relatedId, err)
@@ -95,20 +95,20 @@ func Update(ctx context.Context, client *redmine.Client, ticket *redmine.Issue, 
 	if err != nil {
 		return nil, fmt.Errorf("IssueRelations(%d): %w", ticket.Id, err)
 	}
-	skipRels := map[string]bool{fmt.Sprint(ticket.Id): true}
+	skipRels := map[int]bool{ticket.Id: true}
 	for _, rel := range rels {
 		skipRels[rel.IssueToId] = true
 	}
 
 	for _, relatedId := range related {
-		if relatedId == ticket.Id || skipRels[fmt.Sprint(relatedId)] {
+		if relatedId == ticket.Id || skipRels[relatedId] {
 			continue
 		}
 
 		_, err := client.CreateIssueRelation(redmine.IssueRelation{
-			IssueId:      fmt.Sprint(ticket.Id),
-			IssueToId:    fmt.Sprint(relatedId),
-			RelationType: "related to",
+			IssueId:      ticket.Id,
+			IssueToId:    relatedId,
+			RelationType: "relates",
 		})
 		if err != nil {
 			log.Warn().Err(err).Msgf("Failed to create relationship from %d to %d: %s", ticket.Id, relatedId, err)
@@ -137,11 +137,27 @@ func FindByDID(ctx context.Context, client *redmine.Client, did string) ([]redmi
 	})
 }
 
+func FindBySubject(ctx context.Context, client *redmine.Client, subject string) ([]redmine.Issue, error) {
+	subjectField := fmt.Sprintf("cf_%d", mappings.Fields.Subject)
+
+	return client.IssuesByFilter(&redmine.IssueFilter{
+		ProjectId: fmt.Sprint(mappings.ProjectID),
+		ExtraFilters: map[string]string{
+			"f[]":                                subjectField,
+			fmt.Sprintf("op[%s]", subjectField):  "=",
+			fmt.Sprintf("v[%s][]", subjectField): subject,
+		},
+	})
+}
+
 func SelectDedupeTicket(ctx context.Context, tickets []redmine.Issue) *redmine.Issue {
 	dedupeCandidates := []redmine.Issue{}
 
 	for _, t := range tickets {
-		if t.Tracker != nil && t.Tracker.Id != mappings.TicketTypes.Ticket {
+		if t.Tracker != nil &&
+			t.Tracker.Id != mappings.TicketTypes.Ticket &&
+			(mappings.TicketTypes.RecordTicket == 0 ||
+				t.Tracker.Id != mappings.TicketTypes.RecordTicket) {
 			continue
 		}
 		if t.Status != nil && t.Status.Id == mappings.Statuses.Duplicate {

@@ -238,6 +238,42 @@ module Redmine
                 end
               end
 
+              # Record tickets
+              [new, in_progress, duplicate, invalid].each do |os|
+                [in_progress, closed, duplicate, invalid].each do |ns|
+                  unless os == ns
+                    WorkflowTransition.
+                      create!(:tracker_id => recordTicket.id, :role_id => moderator.id,
+                              :old_status_id => os.id,
+                              :new_status_id => ns.id)
+                  end
+                end
+              end
+              WorkflowTransition.
+                create!(:tracker_id => recordTicket.id, :role_id => moderator.id,
+                        :old_status_id => applied.id,
+                        :new_status_id => in_progress.id)
+
+              [new].each do |os|
+                [in_progress].each do |ns|
+                  unless os == ns
+                    WorkflowTransition.
+                      create!(:tracker_id => recordTicket.id, :role_id => trainee.id,
+                              :old_status_id => os.id, :new_status_id => ns.id)
+                  end
+                end
+              end
+
+              [closed].each do |os|
+                [applied, in_progress].each do |ns|
+                  unless os == ns
+                    WorkflowTransition.
+                      create!(:tracker_id => recordTicket.id, :role_id => automation.id,
+                              :old_status_id => os.id, :new_status_id => ns.id)
+                  end
+                end
+              end
+
               # Incidents
               WorkflowTransition.
                 create!(:tracker_id => incident.id, :role_id => moderator.id,

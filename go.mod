@@ -7,8 +7,8 @@ toolchain go1.23.4
 require (
 	bsky.watch/jwt-go-secp256k1 v0.3.0
 	bsky.watch/labeler v0.3.0
-	bsky.watch/redmine v0.0.0-20250113140056-fa3b3d4dcca3
-	bsky.watch/utils v0.0.0-20250107160407-12419f639000
+	bsky.watch/redmine v0.0.0-20250113212010-9eb9deab1b10
+	bsky.watch/utils v0.0.0-20250111161329-cf10964ad657
 	github.com/Jille/convreq v1.7.1
 	github.com/bluesky-social/indigo v0.0.0-20250107142340-5e1b39404332
 	github.com/ethereum/go-ethereum v1.14.12

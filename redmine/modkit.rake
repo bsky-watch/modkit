@@ -54,6 +54,7 @@ namespace :modkit do
       "publicHostname" => "atproto.example.com",
       "ticketIDEncryptionKey" => SecureRandom.hex(8),
       "labelSigningKey" => `openssl ecparam --name secp256k1 --genkey --noout --outform DER | tail --bytes=+8 | head --bytes=32`.unpack("H*").first,
+      "enablePerRecordTickets" => false,
       "lists" => {
         "bad1" => {
           "name" => "List name that would be displayed in the UI",

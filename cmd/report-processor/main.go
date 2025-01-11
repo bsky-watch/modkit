@@ -24,10 +24,12 @@ func runMain(ctx context.Context) error {
 	ctx = cliutil.SetupLogging(ctx, &cfg.LoggingConfig)
 	log := zerolog.Ctx(ctx)
 
-	if cfg.ConfigPath != "" {
-		if err := cfg.LoadDefaultsFromConfig(cfg.ConfigPath); err != nil {
-			return err
-		}
+	if cfg.ConfigPath == "" {
+		return fmt.Errorf("please provide config file")
+	}
+
+	if err := cfg.LoadDefaultsFromConfig(cfg.ConfigPath); err != nil {
+		return err
 	}
 
 	var tokenSource oauth2.TokenSource
