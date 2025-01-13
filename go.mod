@@ -7,7 +7,7 @@ toolchain go1.23.4
 require (
 	bsky.watch/jwt-go-secp256k1 v0.3.0
 	bsky.watch/labeler v0.3.0
-	bsky.watch/redmine v0.0.0-20250110160348-fd9858f59f42
+	bsky.watch/redmine v0.0.0-20250113140056-fa3b3d4dcca3
 	bsky.watch/utils v0.0.0-20250107160407-12419f639000
 	github.com/Jille/convreq v1.7.1
 	github.com/bluesky-social/indigo v0.0.0-20250107142340-5e1b39404332
@@ -25,6 +25,7 @@ require (
 	github.com/valkey-io/valkey-go v1.0.52
 	golang.org/x/exp v0.0.0-20250103183323-7d7fa50e5329
 	golang.org/x/oauth2 v0.25.0
+	golang.org/x/sync v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -131,7 +132,6 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
