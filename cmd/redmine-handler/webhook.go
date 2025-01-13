@@ -9,14 +9,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"bsky.watch/redmine"
 	"github.com/Jille/convreq"
 	"github.com/Jille/convreq/respond"
 	"github.com/rs/zerolog"
+	"golang.org/x/sync/singleflight"
+
+	"bsky.watch/redmine"
+	"github.com/bluesky-social/indigo/xrpc"
 
 	"bsky.watch/modkit/pkg/config"
 	"bsky.watch/modkit/pkg/metrics"
-	"github.com/bluesky-social/indigo/xrpc"
 )
 
 var requestId atomic.Uint64
@@ -28,6 +30,8 @@ type handler struct {
 	listUpdateClients map[string]*xrpc.Client
 	config            *config.Config
 	myId              int
+
+	dedupe *singleflight.Group
 
 	wrapped http.HandlerFunc
 }
@@ -45,6 +49,7 @@ func NewHandler(ticketsClient *redmine.Client, config *config.Config, client *xr
 		listUpdateClients: listUpdateClients,
 		config:            config,
 		myId:              me.Id,
+		dedupe:            &singleflight.Group{},
 	}
 
 	h.wrapped = convreq.Wrap(h.HandleWebhook)
@@ -112,7 +117,12 @@ func (h *handler) HandleWebhook(ctx context.Context, req *http.Request) convreq.
 		return respond.NoContent("OK")
 	}
 
-	err = h.processPayload(ctx, &payload.Payload)
+	id := -1
+	if payload.Payload.Issue != nil {
+		id = payload.Payload.Issue.Id
+	}
+
+	_, err, _ = h.dedupe.Do(fmt.Sprint(id), func() (interface{}, error) { return nil, h.processPayload(ctx, &payload.Payload) })
 	if err != nil {
 		log.Error().Err(err).Msgf("Processing failed: %s", err)
 		updateMetrics(false, http.StatusBadGateway, start)
