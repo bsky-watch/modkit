@@ -137,10 +137,10 @@ func (h *handler) processPayload(ctx context.Context, payload *WebhookPayload) e
 	log := zerolog.Ctx(ctx)
 
 	switch {
-	case requestedAddingToLists(payload.Issue):
+	case payload.Issue != nil && requestedAddingToLists(payload.Issue):
 		log.Info().Msgf("Requested adding to lists")
 		return h.addToListsAndUpdateStatus(ctx, payload.Issue)
-	case requestedMetadataUpdate(payload.Issue):
+	case payload.Issue != nil && requestedMetadataUpdate(payload.Issue):
 		log.Info().Msgf("Metadata update request")
 		return h.updateMetadata(ctx, payload.Issue, payload.Action == "opened")
 	}
