@@ -6,7 +6,7 @@ toolchain go1.23.4
 
 require (
 	bsky.watch/jwt-go-secp256k1 v0.3.0
-	bsky.watch/labeler v0.3.0
+	bsky.watch/labeler v0.3.1-0.20250101000516-79747261e401
 	bsky.watch/redmine v0.0.0-20250113212010-9eb9deab1b10
 	bsky.watch/utils v0.0.0-20250111161329-cf10964ad657
 	github.com/Jille/convreq v1.7.1

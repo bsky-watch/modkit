@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"bsky.watch/redmine"
-	"github.com/bluesky-social/indigo/xrpc"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -17,10 +15,13 @@ import (
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 
+	"bsky.watch/redmine"
+	"bsky.watch/utils/xrpcauth"
+	"github.com/bluesky-social/indigo/xrpc"
+
 	"bsky.watch/modkit/pkg/cliutil"
 	"bsky.watch/modkit/pkg/config"
 	"bsky.watch/modkit/pkg/tickets"
-	"bsky.watch/utils/xrpcauth"
 )
 
 func runMain(ctx context.Context) error {
@@ -85,62 +86,39 @@ func runMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("querying custom fields: %w", err)
 	}
-	var addToListField *redmine.CustomFieldDefinition
+	var addToListField, labelsField *redmine.CustomFieldDefinition
 	for _, cf := range fields {
-		if cf.Id == tickets.Mappings().Fields.AddToLists {
+		switch cf.Id {
+		case tickets.Mappings().Fields.AddToLists:
 			cf := cf
 			addToListField = &cf
-			break
+		case tickets.Mappings().Fields.Labels:
+			cf := cf
+			labelsField = &cf
 		}
 	}
 	if addToListField != nil {
-		// XXX: Redmine doesn't return this field, so we're just hardcoding it for now.
-		addToListField.EditTagStyle = ptr("check_box")
-
-		label := map[string]string{}
+		values := map[string]string{}
 		for id, l := range modkitConfig.Lists {
-			label[id] = fmt.Sprintf("%s [%s]", l.Name, id)
+			values[id] = fmt.Sprintf("%s [%s]", l.Name, id)
 		}
 
-		changed := false
-		have := map[string]bool{}
-		var newValues []redmine.CustomFieldPossibleValue
-		for _, pv := range addToListField.PossibleValues {
-			if pv.Value == "dummy" {
-				changed = true
-				continue
-			}
-			// We explicitly don't delete any values here (except for "dummy"),
-			// leaving it to the admin to decide how to handle
-			// removing the values from existing tickets.
-			id := extractListId(pv.Value)
-			if id == "" {
-				// No ID provided in the entry, let's just keep it as it and move on.
-				newValues = append(newValues, pv)
-				continue
-			}
-			if label[id] != "" && pv.Value != label[id] {
-				pv.Value = label[id]
-				changed = true
-			}
-			newValues = append(newValues, pv)
-			have[id] = true
+		if err := updateCustomFieldValues(ticketsClient, addToListField, values); err != nil {
+			return err
 		}
-		for id := range modkitConfig.Lists {
-			if have[id] {
-				continue
-			}
-			newValues = append(newValues, redmine.CustomFieldPossibleValue{
-				Value: label[id],
-			})
-			changed = true
-		}
+	}
 
-		if changed {
-			addToListField.PossibleValues = newValues
-			if err := ticketsClient.UpdateCustomField(*addToListField); err != nil {
-				return fmt.Errorf("updating 'Add to lists' field: %w", err)
+	if labelsField != nil && len(modkitConfig.LabelerPolicies.LabelValueDefinitions) > 0 {
+		values := map[string]string{}
+		for _, label := range modkitConfig.LabelerPolicies.LabelValueDefinitions {
+			displayName := label.Identifier
+			if len(label.Locales) > 0 {
+				displayName = label.Locales[0].Name
 			}
+			values[label.Identifier] = fmt.Sprintf("%s [%s]", displayName, label.Identifier)
+		}
+		if err := updateCustomFieldValues(ticketsClient, labelsField, values); err != nil {
+			return err
 		}
 	}
 
