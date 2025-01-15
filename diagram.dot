@@ -6,6 +6,7 @@ digraph diagram {
   report_processor [label="Report processor"];
   listserver [label="List server"];
   redmine_handler [label="Redmine webhook handler"];
+  labeler [label="Labeler"];
   postgres [label="Database",shape="cylinder"];
   firehose [label="Firehose",shape="diamond"];
   bluesky [label="Bluesky API",shape="diamond"];
@@ -14,6 +15,9 @@ digraph diagram {
   firehose -> listserver -> redmine_handler;
   redmine -> postgres -> redmine;
   redmine_handler -> redmine -> redmine_handler;
+  postgres -> labeler -> http;
+  labeler -> postgres;
+  redmine_handler -> labeler -> redmine_handler;
 
   bluesky -> redmine_handler -> bluesky;
   bluesky -> report_processor;
