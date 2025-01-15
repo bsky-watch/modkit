@@ -41,3 +41,9 @@ down:
 
 diagram.png: diagram.dot
 	dot -Tpng "$<" > "$@"
+
+# Only needed if you've initialized the DB before that script was added.
+# Otherwise, postgres docker image would run it automatically on the first start.
+.PHONY: create-extra-dbs
+create-extra-dbs:
+	docker compose exec db /docker-entrypoint-initdb.d/create-extra-databases.sh

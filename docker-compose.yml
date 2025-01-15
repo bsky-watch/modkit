@@ -44,8 +44,11 @@ services:
       POSTGRES_DB: redmine
       POSTGRES_USER: ${DB_USER:-modkit}
       POSTGRES_PASSWORD: ${DB_PASS:?please specify DB_PASS in .env file}
+      MODKIT_LABELER_DB_PASSWORD: ${LABELER_DB_PASSWORD}
+      MODKIT_REPORTS_DB_PASSWORD: ${REPORTS_DB_PASSWORD}
     volumes:
       - ${DATA_DIR:?please specify DATA_DIR in .env file}/db:/var/lib/postgresql/data
+      - ./files/postgres-init:/docker-entrypoint-initdb.d:ro
 
   sidekiq-valkey:
     image: valkey/valkey:7-alpine
@@ -95,6 +98,8 @@ services:
       --listserver-addr=http://listserver:8080/xrpc/watch.bsky.list.getMemberships
       --config=/config/config.yaml
       --mappings=/config/mappings.yaml
+      --labeler-url=http://labeler:8080
+      --labeler-admin-url=http://labeler:8082
     volumes:
       - ./config:/config:ro
 
@@ -111,6 +116,26 @@ services:
     command: >
       --log-level=0
       --config=/config/config.yaml
+    volumes:
+      - ./config:/config:ro
+
+  labeler:
+    image: bsky.watch/modkit/labeler
+    restart: always
+    build:
+      context: .
+      args:
+        CMD: labeler
+    logging:
+      options:
+        'max-size': 50m
+    command: >
+      --log-level=0
+      --config=/config/config.yaml
+      --db-url=postgres://labeler:${LABELER_DB_PASSWORD}@db/labels?sslmode=disable
+      --listen-addr=:8080
+      --metrics-addr=:8081
+      --admin-addr=:8082
     volumes:
       - ./config:/config:ro
 

@@ -143,6 +143,9 @@ func (h *handler) processPayload(ctx context.Context, payload *WebhookPayload) e
 	case payload.Issue != nil && requestedMetadataUpdate(payload.Issue):
 		log.Info().Msgf("Metadata update request")
 		return h.updateMetadata(ctx, payload.Issue, payload.Action == "opened")
+	case payload.Issue != nil && requestedApplyLabels(payload.Issue):
+		log.Info().Msgf("Requested applying labels")
+		return h.applyLabelsAndUpdateStatus(ctx, payload.Issue)
 	case payload.Issue != nil:
 		log.Info().Msgf("Checking if we need to rewrite links in notes")
 		return h.updateJournalIfNeeded(ctx, payload.Issue)

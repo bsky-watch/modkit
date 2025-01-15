@@ -26,6 +26,8 @@ type Config struct {
 	TicketIDEncryptionKey string `split_words:"true"`
 	ListServerURL         string `split_words:"true"`
 	DumpPayloads          bool   `split_words:"true"`
+	LabelerPublicURL      string `split_words:"true"`
+	LabelerAdminURL       string `split_words:"true"`
 }
 
 func (cfg *Config) LoadDefaultsFromConfig(filename string) error {

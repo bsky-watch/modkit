@@ -1,9 +1,8 @@
 :80 {
   reverse_proxy /xrpc/com.atproto.moderation.createReport http://report-receiver:8080
 
-  # Change these two to point to the labeler when we have one.
-  reverse_proxy /xrpc/com.atproto.label.queryLabels http://report-receiver:8080
-  reverse_proxy /xrpc/com.atproto.label.subscribeLabels http://report-receiver:8080
+  reverse_proxy /xrpc/com.atproto.label.queryLabels http://labeler:8080
+  reverse_proxy /xrpc/com.atproto.label.subscribeLabels http://labeler:8080
 
   reverse_proxy * http://redmine:3000
 

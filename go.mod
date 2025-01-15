@@ -6,7 +6,7 @@ toolchain go1.23.4
 
 require (
 	bsky.watch/jwt-go-secp256k1 v0.3.0
-	bsky.watch/labeler v0.3.1-0.20250101000516-79747261e401
+	bsky.watch/labeler v0.3.2
 	bsky.watch/redmine v0.0.0-20250113212010-9eb9deab1b10
 	bsky.watch/utils v0.0.0-20250111161329-cf10964ad657
 	github.com/Jille/convreq v1.7.1
@@ -58,6 +58,7 @@ require (
 	github.com/hashicorp/golang-lru/arc/v2 v2.0.7 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
+	github.com/imax9000/gormzerolog v1.0.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/ipfs/go-blockservice v0.5.2 // indirect
@@ -99,6 +100,7 @@ require (
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
@@ -122,6 +124,7 @@ require (
 	github.com/whyrusleeping/go-did v0.0.0-20240828165449-bcaa7ae21371 // indirect
 	gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b // indirect
 	gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 // indirect
+	go.etcd.io/bbolt v1.3.11 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
 	go.opentelemetry.io/otel v1.33.0 // indirect
@@ -137,6 +140,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 	gorm.io/driver/postgres v1.5.7 // indirect
+	gorm.io/driver/sqlite v1.5.7 // indirect
 	gorm.io/gorm v1.25.12 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 )

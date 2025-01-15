@@ -1,7 +1,7 @@
 bsky.watch/jwt-go-secp256k1 v0.3.0 h1:KTATnI5pJPsyJGlEqfY+jYW7xcsId/CgXpSnhKbF+5s=
 bsky.watch/jwt-go-secp256k1 v0.3.0/go.mod h1:1Vs/pH96XFl7e3l7ioEtpTomFiYV5DRBf58JljLABas=
-bsky.watch/labeler v0.3.1-0.20250101000516-79747261e401 h1:V20LWVUgT8rxnsMPKOhnQJzq5N3hA/bpUO/7etITr3Q=
-bsky.watch/labeler v0.3.1-0.20250101000516-79747261e401/go.mod h1:M8sboe/qOB1K9zXgbBpZ7lXuZ6XRHvBAfZU1Bldzqms=
+bsky.watch/labeler v0.3.2 h1:7ANhrkOEfh5UUPn3xjlwDe7191hsILWam3zHmKp1few=
+bsky.watch/labeler v0.3.2/go.mod h1:M8sboe/qOB1K9zXgbBpZ7lXuZ6XRHvBAfZU1Bldzqms=
 bsky.watch/redmine v0.0.0-20250113212010-9eb9deab1b10 h1:H4Pm/acklq23hhqbRf0OymoKv4mZGjevy6nqE5AIslw=
 bsky.watch/redmine v0.0.0-20250113212010-9eb9deab1b10/go.mod h1:idiboOSFyK1JDYmu75HoErsKYlnvdZPFIv48e2TAQGc=
 bsky.watch/utils v0.0.0-20250111161329-cf10964ad657 h1:oOSlEfjsskS4R3bCEH85EueNE1SacwezT6I5C6xnpDU=
@@ -114,6 +114,8 @@ github.com/huin/goupnp v1.3.0 h1:UvLUlWDNpoUdYzb2TCn+MuTWtcjXKSza2n6CBdQ0xXc=
 github.com/huin/goupnp v1.3.0/go.mod h1:gnGPsThkYa7bFi/KWmEysQRf48l2dvR5bxr2OFckNX8=
 github.com/imax9000/errors v1.0.0 h1:nscXEeqLi+yiCRN70brkdx/34vbrer1PNNMxA8U19q4=
 github.com/imax9000/errors v1.0.0/go.mod h1:wmjAf/T6cGLoTLiu8XGaoRMXBcqgXjQaJ3jNMYCBN/8=
+github.com/imax9000/gormzerolog v1.0.0 h1:NZiBOCIzBZxBUtGQMCqrZCifwFF6asFG4amdjvFazVo=
+github.com/imax9000/gormzerolog v1.0.0/go.mod h1:G0dkTW4OX2qT23NaD6XJQcii+dXxfDz80pOoEKGh3tg=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=
 github.com/ipfs/go-bitfield v1.1.0 h1:fh7FIo8bSwaJEh6DdTWbCeZ1eqOaOkKFI74SCnsWbGA=
@@ -370,6 +372,8 @@ gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b h1:CzigHMRyS
 gitlab.com/yawning/secp256k1-voi v0.0.0-20230925100816-f2616030848b/go.mod h1:/y/V339mxv2sZmYYR64O07VuCpdNZqCTwO8ZcouTMI8=
 gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02 h1:qwDnMxjkyLmAFgcfgTnfJrmYKWhHnci3GjDqcZp1M3Q=
 gitlab.com/yawning/tuplehash v0.0.0-20230713102510-df83abbf9a02/go.mod h1:JTnUj0mpYiAsuZLmKjTx/ex3AtMowcCgnE7YNyCEP0I=
+go.etcd.io/bbolt v1.3.11 h1:yGEzV1wPz2yVCLsD8ZAiGHhHVlczyC9d1rP43/VCRJ0=
+go.etcd.io/bbolt v1.3.11/go.mod h1:dksAq7YMXoljX0xu6VF5DMZGbhYYoLUalEiSySYAS4I=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 h1:yd02MEjBdJkG3uabWP9apV+OuWRIXGDuJEUJbOHmCFU=

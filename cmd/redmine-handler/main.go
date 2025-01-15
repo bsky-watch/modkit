@@ -148,6 +148,8 @@ func main() {
 	flag.StringVar(&cfg.Mappings, "mappings", "", "Path to the file with ID mappings")
 	flag.StringVar(&cfg.ListServerURL, "listserver-addr", "", "Address of the listserver")
 	flag.BoolVar(&cfg.DumpPayloads, "dump-payloads", false, "If set, will log the full payloads received from Redmine")
+	flag.StringVar(&cfg.LabelerPublicURL, "labeler-url", "", "Address of the labeler's query API")
+	flag.StringVar(&cfg.LabelerAdminURL, "labeler-admin-url", "", "Address of the labeler's admin API")
 
 	cliutil.RegisterLoggingFlags(&cfg.LoggingConfig)
 
