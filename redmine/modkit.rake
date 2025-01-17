@@ -46,6 +46,7 @@ namespace :modkit do
 
   task :print_config => :environment do
     config = {
+      "$schema" => "../schema/config.yaml",
       "redmineApiKey" => User.where(:login => "modbot").take.api_key,
       "moderationAccount" => {
         "did" => "did:plc:...",
@@ -63,6 +64,7 @@ namespace :modkit do
       },
     }
 
+    puts "# yaml-language-server: $schema=../schema/config.yaml"
     puts config.to_yaml
   end
 end
