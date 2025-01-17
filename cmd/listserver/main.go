@@ -10,6 +10,8 @@ import (
 	"os"
 	"slices"
 
+	"github.com/Jille/convreq"
+	"github.com/Jille/convreq/respond"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -57,11 +59,19 @@ func runMain(ctx context.Context) error {
 		}
 		dids[u.Host] = true
 	}
+	for _, l := range modkitConfig.LabelsFromLists {
+		u, err := aturl.Parse(l)
+		if err != nil {
+			return fmt.Errorf("parsing %q: %w", l, err)
+		}
+		dids[u.Host] = true
+	}
 
 	server := listserver.New(xrpcauth.NewAnonymousClient(ctx), slices.Sorted(maps.Keys(dids))...)
 
 	mux := http.NewServeMux()
 	mux.Handle("/xrpc/watch.bsky.list.getMemberships", server)
+	mux.HandleFunc("/xrpc/watch.bsky.list.getMembers", convreq.Wrap(dumpList(server)))
 
 	go func() {
 		if err := http.ListenAndServe(cfg.ListenAddr, mux); err != nil {
@@ -112,4 +122,22 @@ func main() {
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func dumpList(server *listserver.Server) func(ctx context.Context, req *http.Request) convreq.HttpResponse {
+	return func(ctx context.Context, req *http.Request) convreq.HttpResponse {
+		uri := req.FormValue("uri")
+		if uri == "" {
+			return respond.BadRequest("missing uri")
+		}
+		list, err := server.List(uri)
+		if err != nil {
+			return respond.BadRequest(fmt.Sprintf("%s", err))
+		}
+		dids, err := list.GetDIDs(ctx)
+		if err != nil {
+			return respond.InternalServerError(fmt.Sprintf("%s", err))
+		}
+		return respond.JSON(slices.Collect(maps.Keys(dids)))
+	}
 }

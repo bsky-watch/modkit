@@ -136,6 +136,7 @@ services:
       --listen-addr=:8080
       --metrics-addr=:8081
       --admin-addr=:8082
+      --listserver-addr=http://listserver:8080/xrpc/watch.bsky.list.getMembers
     volumes:
       - ./config:/config:ro
 

@@ -11,6 +11,8 @@ type Config struct {
 	PublicHostname         string                           `yaml:"publicHostname"`
 	LabelSigningKey        string                           `yaml:"labelSigningKey"`
 	EnablePerRecordTickets bool                             `yaml:"enablePerRecordTickets"`
+	LabelsFromLists        map[string]string                `yaml:"labelsFromLists"`
+	SkipLabels             []string                         `yaml:"skipLabels"`
 }
 
 type ListConfig struct {

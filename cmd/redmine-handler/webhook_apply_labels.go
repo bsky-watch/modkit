@@ -84,6 +84,12 @@ func (h *handler) applyLabels(ctx context.Context, ticket *Issue) (string, error
 		if id == "" {
 			return "", fmt.Errorf("no label ID in the value %q", value)
 		}
+		// TODO: extract some of this into helper methods on the config struct.
+		for _, l := range h.config.SkipLabels {
+			if id == l {
+				return "", fmt.Errorf("label %q is disabled and should not be applied", id)
+			}
+		}
 		found := false
 		for _, l := range h.config.LabelerPolicies.LabelValueDefinitions {
 			if l.Identifier == id {

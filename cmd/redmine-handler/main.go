@@ -117,6 +117,9 @@ func runMain(ctx context.Context) error {
 			}
 			values[label.Identifier] = fmt.Sprintf("%s [%s]", displayName, label.Identifier)
 		}
+		for _, label := range modkitConfig.SkipLabels {
+			delete(values, label)
+		}
 		if err := updateCustomFieldValues(ticketsClient, labelsField, values); err != nil {
 			return err
 		}

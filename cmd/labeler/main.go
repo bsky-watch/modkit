@@ -69,8 +69,8 @@ func runMain(ctx context.Context) error {
 		return cloneLabeler(ctx, server, cfg.CloneFrom)
 	}
 
+	client := xrpcauth.NewClientWithTokenSource(ctx, xrpcauth.PasswordAuth(labelerCfg.DID, labelerCfg.Password))
 	if labelerCfg.Password != "" && len(labelerCfg.Labels.LabelValueDefinitions) > 0 {
-		client := xrpcauth.NewClientWithTokenSource(ctx, xrpcauth.PasswordAuth(labelerCfg.DID, labelerCfg.Password))
 		err := account.UpdateLabelDefs(ctx, client, &labelerCfg.Labels)
 		if err != nil {
 			return fmt.Errorf("updating label definitions: %w", err)
@@ -99,6 +99,10 @@ func runMain(ctx context.Context) error {
 		}()
 	}
 
+	if len(modkitConfig.LabelsFromLists) > 0 {
+		go startListUpdates(ctx, client, modkitConfig.LabelsFromLists, server, cfg.ListRefreshInterval)
+	}
+
 	mux := http.NewServeMux()
 	mux.Handle("/xrpc/com.atproto.label.subscribeLabels", server.Subscribe())
 	mux.Handle("/xrpc/com.atproto.label.queryLabels", server.Query())
@@ -114,6 +118,8 @@ func main() {
 	flag.StringVar(&cfg.AdminAddr, "admin-addr", ":8082", "Address to expose admin API on")
 	flag.StringVar(&cfg.PostgresURL, "db-url", "", "URL of the Postgres database to use")
 	flag.StringVar(&cfg.CloneFrom, "clone-from", "", "URL of a labeler to clone")
+	flag.StringVar(&cfg.ListServerURL, "listserver-addr", "", "Address of the listserver")
+	flag.DurationVar(&cfg.ListRefreshInterval, "list-refresh-interval", time.Minute, "How often to check the content of the lists that are copied into labels")
 
 	cliutil.RegisterLoggingFlags(&cfg.LoggingConfig)
 
