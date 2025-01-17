@@ -98,6 +98,15 @@ To change to this mode:
 2. Restart `labeler` and `redmine-handler`.
 3. Log into Redmine with `admin` account, go into project settings -> Issue Tracking, enable "Record ticket" tracker and press "Save".
 
+### Account-level labels
+
+Currently there's no support for labeling accounts directly. But you can use `labelsFromLists` configuration knob in `config/config.yaml` to sync a label from a list, e.g.:
+
+```yaml
+labelsFromLists:
+  test: at://did:plc:.../app.bsky.graph.list/...
+```
+
 ## System diagram
 
 ![](diagram.png)
