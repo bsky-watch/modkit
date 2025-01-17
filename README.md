@@ -89,7 +89,7 @@ In order to support labeling, there's a different operating mode:
 
 To change to this mode:
 
-1. Update your `config/config.yaml` setting `enablePerRecordTickets` to `true` and adding `labelerPolicies` (it has the same layour at 'policies' field in 'app.bsky.labeler.service' record).
+1. Update your `config/config.yaml` setting `enablePerRecordTickets` to `true` and adding `labelerPolicies` (it has the same layout at 'policies' field in 'app.bsky.labeler.service' record).
 2. If your labeler account is not set up yet:
 
     1. Run `go run ./cmd/account-setup --config=./config/config.yaml`
