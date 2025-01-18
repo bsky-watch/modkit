@@ -1,0 +1,57 @@
+global:
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  evaluation_interval: 1m
+
+scrape_configs:
+  - job_name: prometheus
+    honor_timestamps: true
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - localhost:9090
+
+  - job_name: report-receiver
+    static_configs:
+      - targets:
+          - report-receiver:8081
+  - job_name: report-processor
+    static_configs:
+      - targets:
+          - report-processor:8081
+  - job_name: redmine-handler
+    static_configs:
+      - targets:
+          - redmine-handler:8081
+  - job_name: listserver
+    static_configs:
+      - targets:
+          - listserver:8081
+  - job_name: labeler
+    static_configs:
+      - targets:
+          - labeler:8081
+
+  - job_name: redis_exporter
+    static_configs:
+    - targets:
+      - redis-exporter:9121
+
+  - job_name: valkey
+    static_configs:
+      - targets:
+        - redis://report-queue:6379
+        labels:
+          instance: report-queue
+    metrics_path: /scrape
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: redis-exporter:9121
+      - target_label: job
+        replacement: valkey
+    params:
+      'check-keys': ['report:*']
+      'check-streams': ['automod:*']

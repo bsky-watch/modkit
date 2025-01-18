@@ -33,7 +33,10 @@ gen-config: | .env config
 	@echo "---------------------------------------------------------"
 
 .PHONY: up down
-up:
+up: | .env
+	@. ./.env && \
+		( [ -d "$${DATA_DIR}/prometheus" ] || mkdir "$${DATA_DIR}/prometheus" ) && \
+		( [ "$$(stat --format='%u' "$${DATA_DIR}/prometheus")" = "65534" ] || chown 65534:65534 "$${DATA_DIR}/prometheus" || ( echo "Please run chown 65534:65534 \"$${DATA_DIR}/prometheus\""; exit 1 ) )
 	docker compose up -d --build
 
 down:
